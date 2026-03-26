@@ -1,0 +1,22 @@
+[
+  {
+    "value": "#AI lang:en -is:retweet",
+    "tag": "AI English tweets"
+  },
+  {
+    "value": "\"machine learning\" OR \"deep learning\" lang:en -is:retweet",
+    "tag": "ML/DL tweets"
+  },
+  {
+    "value": "from:elonmusk",
+    "tag": "Elon Musk"
+  },
+  {
+    "value": "(#python OR #javascript) has:links -is:retweet",
+    "tag": "Programming with links"
+  },
+  {
+    "value": "\"breaking news\" has:images -is:retweet",
+    "tag": "Breaking news with images"
+  }
+]

@@ -1,0 +1,34 @@
+{
+  "name": "x-filtered-stream",
+  "version": "1.0.0",
+  "description": "X API Filtered Stream - Stream near real-time Posts matching your filter rules",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "stream": "node src/index.js stream",
+    "rules:list": "node src/index.js rules list",
+    "rules:add": "node src/index.js rules add",
+    "rules:delete": "node src/index.js rules delete",
+    "rules:delete-all": "node src/index.js rules delete-all",
+    "test": "node --test src/__tests__/**/*.test.js",
+    "lint": "eslint src/"
+  },
+  "keywords": [
+    "x-api",
+    "twitter",
+    "filtered-stream",
+    "streaming",
+    "real-time"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "eslint": "^9.18.0"
+  }
+}
