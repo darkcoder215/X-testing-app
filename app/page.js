@@ -2,18 +2,23 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useAuth } from "./components/AuthProvider";
 import InfoCard, { StatusBadge, ExplainerBox } from "./components/InfoCard";
 
 /**
  * Dashboard — The main landing page.
  *
  * Shows a quick overview of the app's status:
- * - Whether credentials are configured
- * - Number of active rules
+ * - Whether credentials are configured (in browser localStorage)
+ * - Number of active rules on X's servers
  * - Stream connection status
  * - Quick-start guide for new users
+ *
+ * All API calls include the Bearer Token from localStorage
+ * via the apiFetch wrapper (no env vars needed).
  */
 export default function DashboardPage() {
+  const { token, apiFetch, loaded } = useAuth();
   const [status, setStatus] = useState({
     auth: { loading: true, configured: false },
     rules: { loading: true, count: 0 },
@@ -21,13 +26,24 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
-    // Fetch all statuses in parallel
+    if (!loaded) return;
+
+    const hasToken = Boolean(token);
+
+    if (!hasToken) {
+      setStatus({
+        auth: { loading: false, configured: false },
+        rules: { loading: false, count: 0 },
+        stream: { loading: false, connected: false },
+      });
+      return;
+    }
+
     Promise.allSettled([
-      fetch("/api/auth").then((r) => r.json()),
-      fetch("/api/rules").then((r) => r.json()),
-      fetch("/api/stream", {
+      apiFetch("/api/auth").then((r) => r.json()),
+      apiFetch("/api/rules").then((r) => r.json()),
+      apiFetch("/api/stream", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "status" }),
       }).then((r) => r.json()),
     ]).then(([authRes, rulesRes, streamRes]) => {
@@ -48,7 +64,7 @@ export default function DashboardPage() {
         },
       });
     });
-  }, []);
+  }, [loaded, token, apiFetch]);
 
   const allConfigured = status.auth.configured && status.rules.count > 0;
 
@@ -100,10 +116,15 @@ export default function DashboardPage() {
           description="Follow these steps to start streaming Posts from X in real-time"
         >
           <div className="space-y-4">
+            <ExplainerBox type="info" title="No environment variables needed!">
+              Your Bearer Token is stored in this browser&apos;s localStorage. Just paste it
+              on the Setup page and you&apos;re ready to go — no server config or redeployment required.
+            </ExplainerBox>
+
             <Step
               number={1}
               title="Configure your Bearer Token"
-              description="Get a Bearer Token from the X Developer Portal and add it on the Setup page. The token authenticates your app with the X API."
+              description="Get a Bearer Token from the X Developer Portal and add it on the Setup page. It's saved in your browser and sent securely with each API call."
               done={status.auth.configured}
               href="/setup"
             />

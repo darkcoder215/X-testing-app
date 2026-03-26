@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "../components/AuthProvider";
 import InfoCard, { ExplainerBox, StatusBadge, ErrorDisplay } from "../components/InfoCard";
 
 /**
@@ -12,30 +13,35 @@ import InfoCard, { ExplainerBox, StatusBadge, ErrorDisplay } from "../components
  * - Delete individual rules or all rules at once
  * - See example rules with explanations
  *
+ * All API calls use apiFetch which auto-includes the Bearer Token
+ * from localStorage via the "X-Bearer-Token" header.
+ *
  * WHY RULES MATTER:
  * Rules determine which Posts appear in your stream. Without rules,
- * the stream won't deliver any data. Rules use powerful operators
- * to match on keywords, hashtags, users, language, and more.
- *
- * IMPORTANT: Rules persist on X's servers. Once added, they remain
- * active even if you disconnect from the stream or restart the app.
+ * the stream won't deliver any data. Rules persist on X's servers —
+ * once added, they remain active even if you disconnect or restart.
  */
 export default function RulesPage() {
+  const { apiFetch, token, loaded } = useAuth();
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [newRule, setNewRule] = useState({ value: "", tag: "" });
   const [adding, setAdding] = useState(false);
-  const [deleting, setDeleting] = useState(null); // rule ID being deleted
+  const [deleting, setDeleting] = useState(null);
   const [feedback, setFeedback] = useState(null);
 
   const fetchRules = useCallback(async () => {
+    if (!token) {
+      setLoading(false);
+      setError({ error: "No Bearer Token configured.", code: "AUTH_NOT_CONFIGURED", hint: "Add your token on the Setup page." });
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch("/api/rules");
+      const res = await apiFetch("/api/rules");
       const data = await res.json();
-
       if (data.error) {
         setError(data);
       } else {
@@ -46,11 +52,11 @@ export default function RulesPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [apiFetch, token]);
 
   useEffect(() => {
-    fetchRules();
-  }, [fetchRules]);
+    if (loaded) fetchRules();
+  }, [loaded, fetchRules]);
 
   async function handleAddRule(e) {
     e.preventDefault();
@@ -63,9 +69,8 @@ export default function RulesPage() {
       const rule = { value: newRule.value.trim() };
       if (newRule.tag.trim()) rule.tag = newRule.tag.trim();
 
-      const res = await fetch("/api/rules", {
+      const res = await apiFetch("/api/rules", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ add: [rule] }),
       });
       const data = await res.json();
@@ -90,9 +95,8 @@ export default function RulesPage() {
   async function handleDeleteRule(id) {
     setDeleting(id);
     try {
-      const res = await fetch("/api/rules", {
+      const res = await apiFetch("/api/rules", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ delete: { ids: [id] } }),
       });
       const data = await res.json();
@@ -114,9 +118,8 @@ export default function RulesPage() {
 
     setDeleting("all");
     try {
-      const res = await fetch("/api/rules", {
+      const res = await apiFetch("/api/rules", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ deleteAll: true }),
       });
       const data = await res.json();
@@ -168,7 +171,7 @@ export default function RulesPage() {
               className="w-full px-4 py-2.5 bg-surface-light border border-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm font-mono"
             />
             <p className="text-xs text-text-secondary mt-1.5">
-              Max {newRule.value.length}/1,024 characters (pay-per-use) or 2,048 (Enterprise).
+              {newRule.value.length}/1,024 characters (pay-per-use) or 2,048 (Enterprise).
               {newRule.value.length > 1024 && (
                 <span className="text-warning"> Exceeds pay-per-use limit.</span>
               )}
@@ -193,7 +196,7 @@ export default function RulesPage() {
 
           <button
             type="submit"
-            disabled={adding || !newRule.value.trim()}
+            disabled={adding || !newRule.value.trim() || !token}
             className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-all-fast"
           >
             {adding ? "Adding..." : "Add Rule"}
@@ -222,7 +225,6 @@ export default function RulesPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {/* Bulk actions */}
             <div className="flex items-center justify-between mb-4">
               <span className="text-sm text-text-secondary">{rules.length} rule(s)</span>
               <button
@@ -234,15 +236,12 @@ export default function RulesPage() {
               </button>
             </div>
 
-            {/* Rule list */}
             {rules.map((rule) => (
               <div key={rule.id} className="flex items-start gap-3 p-4 bg-surface-light rounded-lg border border-border">
                 <div className="flex-1 min-w-0">
                   <code className="text-sm text-primary font-mono break-all">{rule.value}</code>
                   <div className="flex items-center gap-3 mt-2">
-                    {rule.tag && (
-                      <StatusBadge status="info" label={rule.tag} />
-                    )}
+                    {rule.tag && <StatusBadge status="info" label={rule.tag} />}
                     <span className="text-xs text-text-secondary font-mono">ID: {rule.id}</span>
                   </div>
                 </div>

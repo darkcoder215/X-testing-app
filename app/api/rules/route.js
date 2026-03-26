@@ -1,8 +1,10 @@
 /**
  * /api/rules — Manage Filtered Stream rules
  *
- * GET  /api/rules          → List all current rules
- * POST /api/rules          → Add new rules or delete existing ones
+ * GET  /api/rules — List all current rules
+ * POST /api/rules — Add new rules or delete existing ones
+ *
+ * TOKEN: Read from "X-Bearer-Token" header (browser) or env var (fallback).
  *
  * WHY: Rules determine which Posts appear in your stream. You can have
  * up to 1,000 rules (pay-per-use) or 25,000+ (Enterprise). Rules persist
@@ -10,20 +12,18 @@
  */
 
 import { NextResponse } from "next/server";
-import { apiRequest } from "@/lib/x-client";
+import { apiRequest, getTokenFromRequest } from "@/lib/x-client";
 import { log } from "@/lib/logger";
 
 const RULES_PATH = "/tweets/search/stream/rules";
 
 /**
  * GET /api/rules — List all active stream rules
- *
- * Returns the rules currently registered with X's servers.
- * These rules filter which Posts appear in your stream.
  */
-export async function GET() {
+export async function GET(request) {
   try {
-    const data = await apiRequest("GET", RULES_PATH);
+    const bearerToken = getTokenFromRequest(request);
+    const data = await apiRequest("GET", RULES_PATH, { bearerToken });
     const rules = data.data || [];
     const meta = data.meta || {};
 
@@ -45,7 +45,7 @@ export async function GET() {
         error: error.message,
         code: error.code || "UNKNOWN",
         hint: error.code === "AUTH_NOT_CONFIGURED"
-          ? "Set up your Bearer Token on the Setup page first."
+          ? "Add your Bearer Token on the Setup page first."
           : error.code === "AUTH_INVALID"
             ? "Your Bearer Token is invalid. Update it on the Setup page."
             : "Check the Logs page for more details.",
@@ -64,11 +64,12 @@ export async function GET() {
  */
 export async function POST(request) {
   try {
+    const bearerToken = getTokenFromRequest(request);
     const body = await request.json();
 
-    // Handle delete-all: fetch current rules, then delete them
+    // Handle delete-all
     if (body.deleteAll) {
-      const current = await apiRequest("GET", RULES_PATH);
+      const current = await apiRequest("GET", RULES_PATH, { bearerToken });
       const rules = current.data || [];
 
       if (rules.length === 0) {
@@ -78,6 +79,7 @@ export async function POST(request) {
       const ids = rules.map((r) => r.id);
       const result = await apiRequest("POST", RULES_PATH, {
         body: { delete: { ids } },
+        bearerToken,
       });
 
       log.success("rules", `Deleted all ${ids.length} rule(s)`);
@@ -99,6 +101,7 @@ export async function POST(request) {
 
       const result = await apiRequest("POST", RULES_PATH, {
         body: { delete: { ids } },
+        bearerToken,
       });
 
       log.success("rules", `Deleted ${ids.length} rule(s)`, { ids });
@@ -112,7 +115,6 @@ export async function POST(request) {
     if (body.add) {
       const rules = body.add;
 
-      // Validate
       for (const rule of rules) {
         if (!rule.value || !rule.value.trim()) {
           return NextResponse.json(
@@ -130,16 +132,14 @@ export async function POST(request) {
 
       const result = await apiRequest("POST", RULES_PATH, {
         body: { add: rules },
+        bearerToken,
       });
 
-      // Check for rule-level errors
       if (result.errors && result.errors.length > 0) {
         const errorMessages = result.errors.map(
           (e) => `${e.title}: ${e.value || e.detail || ""}`
         );
-
         log.warn("rules", `Some rules failed: ${errorMessages.join("; ")}`);
-
         return NextResponse.json({
           message: "Some rules could not be created.",
           errors: result.errors,
@@ -149,9 +149,7 @@ export async function POST(request) {
       }
 
       const created = result.meta?.summary?.created || rules.length;
-      log.success("rules", `Added ${created} rule(s)`, {
-        rules: rules.map((r) => r.value),
-      });
+      log.success("rules", `Added ${created} rule(s)`, { rules: rules.map((r) => r.value) });
 
       return NextResponse.json({
         message: `Added ${created} rule(s).`,
@@ -172,7 +170,7 @@ export async function POST(request) {
         error: error.message,
         code: error.code || "UNKNOWN",
         hint: error.code === "AUTH_NOT_CONFIGURED"
-          ? "Set up your Bearer Token on the Setup page first."
+          ? "Add your Bearer Token on the Setup page first."
           : "Check the Logs page for more details.",
       },
       { status: error.status || 500 }

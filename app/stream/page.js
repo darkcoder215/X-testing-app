@@ -1,28 +1,30 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useAuth } from "../components/AuthProvider";
 import InfoCard, { StatusBadge, ExplainerBox, ErrorDisplay } from "../components/InfoCard";
 
 /**
  * Live Stream Page — View Posts from the Filtered Stream in real-time
  *
- * This page:
- * - Connects to the server via Server-Sent Events (SSE)
- * - Displays Posts as they arrive from the X API
- * - Shows connection status, stats, and error information
- * - Auto-scrolls to show new Posts (can be paused)
- *
  * HOW IT WORKS:
- * 1. You click "Start Stream" which tells the server to connect to X
- * 2. The server opens a persistent HTTP connection to X's Filtered Stream API
- * 3. This page opens an SSE connection to the server
+ * 1. You click "Start Stream" — the Bearer Token from localStorage is sent
+ *    to the server via the stream start API call
+ * 2. The server connects to X's Filtered Stream API using that token
+ * 3. This page opens a fetch-based SSE connection to the server
  * 4. The server relays Posts from X to your browser in real-time
  *
- * WHY SSE (not WebSocket)?
- * SSE is simpler, works over HTTP, and is perfect for one-way data flow
- * (server → client). It also auto-reconnects and works through proxies.
+ * WHY FETCH-BASED SSE (not EventSource)?
+ * EventSource doesn't support custom headers, so we can't send the
+ * Bearer Token for auth checking. We use fetch() with a ReadableStream
+ * reader instead, which gives us full control over headers.
+ *
+ * The Bearer Token is sent once in the "start" POST request. The SSE
+ * GET connection doesn't need the token because the server already
+ * has it from the start call.
  */
 export default function StreamPage() {
+  const { token, apiFetch } = useAuth();
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [posts, setPosts] = useState([]);
@@ -32,79 +34,100 @@ export default function StreamPage() {
   const [autoScroll, setAutoScroll] = useState(true);
   const [paused, setPaused] = useState(false);
   const postsEndRef = useRef(null);
-  const eventSourceRef = useRef(null);
+  const abortRef = useRef(null);
   const pausedRef = useRef(false);
 
-  // Keep ref in sync with state for use in SSE callback
   useEffect(() => { pausedRef.current = paused; }, [paused]);
 
-  // Auto-scroll to bottom when new posts arrive
   useEffect(() => {
     if (autoScroll && !paused && postsEndRef.current) {
       postsEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [posts, autoScroll, paused]);
 
-  // Set up SSE connection
+  // Fetch-based SSE connection (supports custom headers if needed)
   const connectSSE = useCallback(() => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
+    if (abortRef.current) abortRef.current.abort();
 
-    const es = new EventSource("/api/stream");
-    eventSourceRef.current = es;
+    const controller = new AbortController();
+    abortRef.current = controller;
 
-    es.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
+    fetch("/api/stream", { signal: controller.signal })
+      .then(async (response) => {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
 
-        switch (data.type) {
-          case "post":
-            if (!pausedRef.current) {
-              setPosts((prev) => {
-                const updated = [...prev, data.data];
-                // Keep only last 200 posts in the UI to prevent memory issues
-                return updated.length > 200 ? updated.slice(-200) : updated;
-              });
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const jsonStr = line.slice(6).trim();
+            if (!jsonStr) continue;
+
+            try {
+              const data = JSON.parse(jsonStr);
+              handleSSEMessage(data);
+            } catch {
+              // Ignore parse errors from heartbeats
             }
-            break;
-
-          case "status":
-            setConnected(data.connected);
-            setConnecting(false);
-            setReconnectInfo(null);
-            if (data.stats) setStats(data.stats);
-            break;
-
-          case "reconnecting":
-            setConnected(false);
-            setConnecting(true);
-            setReconnectInfo(data);
-            break;
-
-          case "error":
-            setError(data);
-            setConnecting(false);
-            break;
-
-          case "stream_error":
-            setError({ message: `X API: ${data.error?.title || "Unknown error"} — ${data.error?.detail || ""}` });
-            break;
+          }
         }
-      } catch {
-        // Ignore parse errors from heartbeats
-      }
-    };
+      })
+      .catch((err) => {
+        if (err.name !== "AbortError") {
+          // Reconnect SSE after a brief delay
+          setTimeout(() => {
+            if (!controller.signal.aborted) connectSSE();
+          }, 3000);
+        }
+      });
 
-    es.onerror = () => {
-      // SSE will auto-reconnect
-    };
-
-    return () => {
-      es.close();
-      eventSourceRef.current = null;
-    };
+    return () => controller.abort();
   }, []);
+
+  function handleSSEMessage(data) {
+    switch (data.type) {
+      case "post":
+        if (!pausedRef.current) {
+          setPosts((prev) => {
+            const updated = [...prev, data.data];
+            return updated.length > 200 ? updated.slice(-200) : updated;
+          });
+        }
+        break;
+
+      case "status":
+        setConnected(data.connected);
+        setConnecting(false);
+        setReconnectInfo(null);
+        if (data.stats) setStats(data.stats);
+        break;
+
+      case "reconnecting":
+        setConnected(false);
+        setConnecting(true);
+        setReconnectInfo(data);
+        break;
+
+      case "error":
+        setError(data);
+        setConnecting(false);
+        break;
+
+      case "stream_error":
+        setError({
+          message: `X API: ${data.error?.title || "Unknown error"} — ${data.error?.detail || ""}`,
+        });
+        break;
+    }
+  }
 
   useEffect(() => {
     const cleanup = connectSSE();
@@ -112,13 +135,18 @@ export default function StreamPage() {
   }, [connectSSE]);
 
   async function handleStart() {
+    if (!token) {
+      setError({ message: "No Bearer Token configured. Add one on the Setup page.", code: "AUTH_NOT_CONFIGURED" });
+      return;
+    }
+
     setConnecting(true);
     setError(null);
+
     try {
-      await fetch("/api/stream", {
+      await apiFetch("/api/stream", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "start" }),
+        body: JSON.stringify({ action: "start", bearerToken: token }),
       });
     } catch (err) {
       setError({ message: err.message });
@@ -128,9 +156,8 @@ export default function StreamPage() {
 
   async function handleStop() {
     try {
-      await fetch("/api/stream", {
+      await apiFetch("/api/stream", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "stop" }),
       });
       setConnected(false);
@@ -167,7 +194,7 @@ export default function StreamPage() {
           ) : (
             <button
               onClick={handleStart}
-              disabled={connecting}
+              disabled={connecting || !token}
               className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark disabled:opacity-50 transition-all-fast"
             >
               {connecting ? "Connecting..." : "Start Stream"}
@@ -195,7 +222,6 @@ export default function StreamPage() {
 
         <div className="flex-1" />
 
-        {/* Stream controls */}
         <button
           onClick={() => setPaused(!paused)}
           className={`px-3 py-1 text-xs rounded border transition-all-fast ${
@@ -238,7 +264,7 @@ export default function StreamPage() {
         <ErrorDisplay
           error={error.message}
           code={error.code}
-          hint={error.code === "AUTH_NOT_CONFIGURED" ? "Set up your Bearer Token on the Setup page." : undefined}
+          hint={error.code === "AUTH_NOT_CONFIGURED" ? "Add your Bearer Token on the Setup page." : undefined}
           onRetry={handleStart}
         />
       )}
@@ -292,13 +318,13 @@ export default function StreamPage() {
       >
         <div className="space-y-3">
           <div className="flex items-center gap-3 py-3 px-4 bg-surface-light rounded-lg text-xs overflow-x-auto">
+            <PipelineStep label="Browser" sub="Token in localStorage" />
+            <Arr />
+            <PipelineStep label="Server" sub="Connects to X API" />
+            <Arr />
             <PipelineStep label="X API" sub="Filtered Stream" />
-            <Arrow />
-            <PipelineStep label="Server" sub="Stream Manager" />
-            <Arrow />
-            <PipelineStep label="SSE" sub="Server-Sent Events" />
-            <Arrow />
-            <PipelineStep label="Browser" sub="This page" />
+            <Arr />
+            <PipelineStep label="SSE" sub="Pushes to browser" />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
@@ -323,9 +349,6 @@ export default function StreamPage() {
   );
 }
 
-/**
- * PostCard — Renders a single Post from the stream.
- */
 function PostCard({ post }) {
   const data = post.data;
   if (!data) return null;
@@ -335,23 +358,16 @@ function PostCard({ post }) {
 
   return (
     <div className="p-4 hover:bg-surface-light/50 transition-all-fast">
-      {/* User info */}
       <div className="flex items-center gap-2 mb-2">
         {user?.profile_image_url && (
-          <img
-            src={user.profile_image_url}
-            alt={user.name}
-            className="w-8 h-8 rounded-full"
-          />
+          <img src={user.profile_image_url} alt={user.name} className="w-8 h-8 rounded-full" />
         )}
         <div className="flex items-center gap-2">
           {user ? (
             <>
               <span className="font-medium text-sm text-text-primary">{user.name}</span>
               <span className="text-text-secondary text-sm">@{user.username}</span>
-              {user.verified_type && (
-                <StatusBadge status="info" label={user.verified_type} />
-              )}
+              {user.verified_type && <StatusBadge status="info" label={user.verified_type} />}
             </>
           ) : (
             <span className="text-text-secondary text-sm">User {data.author_id}</span>
@@ -362,10 +378,8 @@ function PostCard({ post }) {
         </span>
       </div>
 
-      {/* Post text */}
       <p className="text-sm text-text-primary whitespace-pre-wrap break-words">{data.text}</p>
 
-      {/* Metrics */}
       <div className="flex items-center gap-4 mt-3 text-xs text-text-secondary">
         {data.public_metrics && (
           <>
@@ -378,22 +392,17 @@ function PostCard({ post }) {
         {data.source && <span>Via: {data.source}</span>}
       </div>
 
-      {/* Matching rules */}
       {matchingRules.length > 0 && (
         <div className="flex items-center gap-2 mt-2">
           <span className="text-xs text-text-secondary">Matched:</span>
           {matchingRules.map((rule) => (
-            <span
-              key={rule.id}
-              className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded"
-            >
+            <span key={rule.id} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
               {rule.tag || rule.id}
             </span>
           ))}
         </div>
       )}
 
-      {/* Entities */}
       {data.entities?.hashtags?.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-2">
           {data.entities.hashtags.map((h, i) => (
@@ -414,7 +423,7 @@ function PipelineStep({ label, sub }) {
   );
 }
 
-function Arrow() {
+function Arr() {
   return <span className="text-text-secondary flex-shrink-0 text-xs">&rarr;</span>;
 }
 

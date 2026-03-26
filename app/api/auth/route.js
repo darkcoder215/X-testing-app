@@ -1,22 +1,31 @@
 /**
- * POST /api/auth — Validate a Bearer Token against the X API
+ * /api/auth — Validate and check Bearer Token status
  *
- * WHY: Before saving credentials, we verify they work by making
+ * POST /api/auth — Validate a token (sent in request body or header)
+ * GET  /api/auth — Check if a token is available (header or env var)
+ *
+ * TOKEN RESOLUTION:
+ * 1. "X-Bearer-Token" request header (from browser localStorage)
+ * 2. Request body `bearerToken` field (for validation flow)
+ * 3. X_BEARER_TOKEN env var (fallback)
+ *
+ * WHY: Before streaming, we verify the token works by making
  * a lightweight call to the rules endpoint. This prevents users
  * from getting stuck with invalid tokens.
- *
- * Request body: { "bearerToken": "AAA..." }
- * Response: { "valid": true/false, "message": "...", "details": {...} }
  */
 
 import { NextResponse } from "next/server";
+import { getTokenFromRequest } from "@/lib/x-client";
 import { log } from "@/lib/logger";
 
 export async function POST(request) {
   try {
-    const { bearerToken } = await request.json();
+    const body = await request.json();
 
-    if (!bearerToken || !bearerToken.trim()) {
+    // Use token from body (validation flow) or from header (status check)
+    const bearerToken = body.bearerToken?.trim() || getTokenFromRequest(request);
+
+    if (!bearerToken) {
       return NextResponse.json(
         { valid: false, message: "Bearer Token is required", code: "EMPTY_TOKEN" },
         { status: 400 }
@@ -25,12 +34,11 @@ export async function POST(request) {
 
     log.info("auth", "Validating Bearer Token...");
 
-    // Test the token by calling the rules endpoint (lightweight, no side effects)
     const response = await fetch(
       "https://api.x.com/2/tweets/search/stream/rules",
       {
         headers: {
-          Authorization: `Bearer ${bearerToken.trim()}`,
+          Authorization: `Bearer ${bearerToken}`,
           "User-Agent": "x-filtered-stream/2.0.0",
         },
       }
@@ -44,21 +52,17 @@ export async function POST(request) {
 
       return NextResponse.json({
         valid: true,
-        message: `Token is valid. You have ${ruleCount} existing rule(s).`,
+        message: `Token is valid! You have ${ruleCount} existing rule(s).`,
         details: { ruleCount },
       });
     }
 
-    // Parse error response
     const errorBody = await response.text();
     let errorMessage = `HTTP ${response.status}`;
-
     try {
       const parsed = JSON.parse(errorBody);
       errorMessage = parsed.detail || parsed.title || errorMessage;
-    } catch {
-      // Use status code message
-    }
+    } catch { /* use status message */ }
 
     const statusMessages = {
       401: "Invalid Bearer Token. Check that you copied it correctly from the Developer Portal.",
@@ -91,18 +95,22 @@ export async function POST(request) {
 }
 
 /**
- * GET /api/auth — Check if a Bearer Token is currently configured
+ * GET /api/auth — Check if a Bearer Token is available
  *
- * Does NOT return the actual token — just whether one is set.
+ * Checks both the request header (browser localStorage) and env var.
+ * Does NOT return the actual token — just whether one is available.
  */
-export async function GET() {
-  const token = process.env.X_BEARER_TOKEN;
-  const configured = Boolean(token && token !== "your_bearer_token_here");
+export async function GET(request) {
+  const token = getTokenFromRequest(request);
+  const configured = Boolean(token);
 
   return NextResponse.json({
     configured,
+    source: token
+      ? (request.headers.get("x-bearer-token") ? "browser" : "environment")
+      : null,
     message: configured
       ? "Bearer Token is configured"
-      : "No Bearer Token configured. Go to Setup to add one.",
+      : "No Bearer Token found. Add one on the Setup page.",
   });
 }
