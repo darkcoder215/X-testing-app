@@ -1,34 +1,40 @@
 {
   "name": "x-filtered-stream",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "X API Filtered Stream - Stream near real-time Posts matching your filter rules",
-  "main": "src/index.js",
-  "type": "module",
+  "private": true,
   "scripts": {
-    "start": "node src/index.js",
-    "stream": "node src/index.js stream",
-    "rules:list": "node src/index.js rules list",
-    "rules:add": "node src/index.js rules add",
-    "rules:delete": "node src/index.js rules delete",
-    "rules:delete-all": "node src/index.js rules delete-all",
-    "test": "node --test src/__tests__/**/*.test.js",
-    "lint": "eslint src/"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "cli": "node src/index.js",
+    "cli:stream": "node src/index.js stream",
+    "cli:rules:list": "node src/index.js rules list",
+    "cli:setup": "node src/index.js setup",
+    "test": "node --test src/__tests__/**/*.test.js"
   },
   "keywords": [
     "x-api",
     "twitter",
     "filtered-stream",
     "streaming",
-    "real-time"
+    "real-time",
+    "next.js"
   ],
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "next": "^15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "eslint": "^9.18.0"
+    "@tailwindcss/postcss": "^4.0.0",
+    "eslint": "^9.18.0",
+    "tailwindcss": "^4.0.0"
   }
 }

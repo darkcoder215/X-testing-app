@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #1d9bf0;
+  --color-primary-dark: #1a8cd8;
+  --color-surface: #16181c;
+  --color-surface-light: #1e2028;
+  --color-surface-lighter: #2a2d35;
+  --color-border: #2f3336;
+  --color-text-primary: #e7e9ea;
+  --color-text-secondary: #71767b;
+  --color-success: #00ba7c;
+  --color-warning: #f5a623;
+  --color-error: #f4212e;
+  --color-info: #1d9bf0;
+}
+
+body {
+  background-color: #000;
+  color: var(--color-text-primary);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-surface);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface-lighter);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}
+
+/* Smooth transitions */
+.transition-all-fast {
+  transition: all 0.15s ease;
+}
+
+/* Pulse animation for live indicator */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
