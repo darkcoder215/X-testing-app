@@ -2,8 +2,9 @@
 
 import { validateConfig } from "./lib/config.js";
 import { getRules, addRules, deleteRules, deleteAllRules, printRules } from "./handlers/rules.js";
-import { connectToStream } from "./handlers/stream.js";
+import { connectToStream, connectToRecoveryStream } from "./handlers/stream.js";
 import { formatPost, formatPostCompact, formatPostJSON } from "./handlers/formatter.js";
+import { runSetup } from "./handlers/setup.js";
 
 const HELP_TEXT = `
   X Filtered Stream CLI
@@ -13,15 +14,25 @@ const HELP_TEXT = `
 
   Commands:
 
+    setup
+        Interactive setup wizard — configure your Bearer Token and
+        stream settings. Creates/updates the .env file.
+
     stream [--format=default|compact|json]
         Connect to the Filtered Stream and display matching Posts.
+        Uses a FIFO queue for async processing, auto-reconnects with
+        per-error-type backoff, tracks volume, and deduplicates Posts.
+
+    recover --start=<ISO8601> --end=<ISO8601> [--format=default|compact|json]
+        Replay missed Posts from a time window (up to 24h, Enterprise).
+        Example: recover --start=2024-01-15T10:00:00Z --end=2024-01-15T10:10:00Z
 
     rules list
         List all active stream rules.
 
     rules add <value> [--tag=<tag>]
         Add a new rule. The value is the filter expression.
-        Example: node src/index.js rules add "from:elonmusk -is:retweet" --tag="Elon"
+        Example: rules add "from:elonmusk -is:retweet" --tag="Elon"
 
     rules add-file <path>
         Add rules from a JSON file. The file should contain an array of
@@ -37,20 +48,34 @@ const HELP_TEXT = `
         Show this help message.
 
   Environment:
-    Copy .env.example to .env and set your X_BEARER_TOKEN.
-    Get a Bearer Token at: https://developer.x.com/en/portal/dashboard
+    Run "node src/index.js setup" to configure interactively, or
+    copy .env.example to .env and set your X_BEARER_TOKEN manually.
+
+  Reconnection Strategy:
+    TCP/IP errors  → linear backoff (+250ms per attempt, max 16s)
+    HTTP errors    → exponential backoff (5s → 10s → 20s..., max 320s)
+    Rate limit 429 → exponential backoff (60s → 120s → 240s...)
 
   Examples:
+    # First-time setup
+    node src/index.js setup
+
     # Add rules and start streaming
     node src/index.js rules add "#AI lang:en -is:retweet" --tag="AI English"
     node src/index.js rules add "from:elonmusk" --tag="Elon"
     node src/index.js stream
+
+    # Load example rules
+    node src/index.js rules add-file examples/rules.json
 
     # Compact output for high-volume streams
     node src/index.js stream --format=compact
 
     # JSON output for piping
     node src/index.js stream --format=json | jq '.data.text'
+
+    # Recover missed Posts (Enterprise)
+    node src/index.js recover --start=2024-01-15T10:00:00Z --end=2024-01-15T10:10:00Z
 `;
 
 async function main() {
@@ -62,12 +87,21 @@ async function main() {
     process.exit(0);
   }
 
+  // Setup doesn't need a valid token yet
+  if (command === "setup") {
+    await runSetup();
+    return;
+  }
+
   // Validate config before any API calls
   validateConfig();
 
   switch (command) {
     case "stream":
       await handleStream(args.slice(1));
+      break;
+    case "recover":
+      await handleRecover(args.slice(1));
       break;
     case "rules":
       await handleRules(args.slice(1));
@@ -79,25 +113,25 @@ async function main() {
   }
 }
 
-async function handleStream(args) {
+function getFormatter(args) {
   const formatFlag = args.find((a) => a.startsWith("--format="));
   const format = formatFlag ? formatFlag.split("=")[1] : "default";
 
-  let formatter;
   switch (format) {
     case "compact":
-      formatter = formatPostCompact;
-      break;
+      return formatPostCompact;
     case "json":
-      formatter = formatPostJSON;
-      break;
+      return formatPostJSON;
     case "default":
-      formatter = formatPost;
-      break;
+      return formatPost;
     default:
       console.error(`Unknown format: ${format}. Use default, compact, or json.`);
       process.exit(1);
   }
+}
+
+async function handleStream(args) {
+  const formatter = getFormatter(args);
 
   // Show current rules before connecting
   const rules = await getRules();
@@ -110,6 +144,46 @@ async function handleStream(args) {
   }
 
   await connectToStream(formatter);
+}
+
+async function handleRecover(args) {
+  const startFlag = args.find((a) => a.startsWith("--start="));
+  const endFlag = args.find((a) => a.startsWith("--end="));
+
+  if (!startFlag || !endFlag) {
+    console.error("Error: Both --start and --end are required for recovery.");
+    console.error("Usage: recover --start=<ISO8601> --end=<ISO8601> [--format=...]");
+    console.error("Example: recover --start=2024-01-15T10:00:00Z --end=2024-01-15T10:10:00Z");
+    process.exit(1);
+  }
+
+  const startTime = startFlag.split("=").slice(1).join("=");
+  const endTime = endFlag.split("=").slice(1).join("=");
+
+  // Validate ISO 8601 format
+  if (isNaN(Date.parse(startTime)) || isNaN(Date.parse(endTime))) {
+    console.error("Error: start and end must be valid ISO 8601 dates.");
+    console.error("Example: 2024-01-15T10:00:00Z");
+    process.exit(1);
+  }
+
+  const start = new Date(startTime);
+  const end = new Date(endTime);
+
+  if (end <= start) {
+    console.error("Error: end time must be after start time.");
+    process.exit(1);
+  }
+
+  const hoursDiff = (end - start) / (1000 * 60 * 60);
+  if (hoursDiff > 24) {
+    console.error("Error: Recovery window cannot exceed 24 hours.");
+    console.error("For longer gaps, use the Search Posts endpoint instead.");
+    process.exit(1);
+  }
+
+  const formatter = getFormatter(args);
+  await connectToRecoveryStream(formatter, startTime, endTime);
 }
 
 async function handleRules(args) {

@@ -1,4 +1,5 @@
 import config from "./config.js";
+import { name, version } from "./package-info.js";
 
 /**
  * Authenticated HTTP client for the X API v2.
@@ -10,6 +11,16 @@ class XApiClient {
     this.headers = {
       Authorization: `Bearer ${config.bearerToken}`,
       "Content-Type": "application/json",
+      "User-Agent": `${name}/${version}`,
+    };
+  }
+
+  /** Re-initialize headers (e.g. after config changes from setup). */
+  reinitialize() {
+    this.headers = {
+      Authorization: `Bearer ${config.bearerToken}`,
+      "Content-Type": "application/json",
+      "User-Agent": `${name}/${version}`,
     };
   }
 
@@ -71,7 +82,10 @@ class XApiClient {
 
     const response = await fetch(url.toString(), {
       method: "GET",
-      headers: { Authorization: `Bearer ${config.bearerToken}` },
+      headers: {
+        Authorization: `Bearer ${config.bearerToken}`,
+        "User-Agent": `${name}/${version}`,
+      },
     });
 
     if (!response.ok) {
