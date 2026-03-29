@@ -5,18 +5,6 @@ import Link from "next/link";
 import { useAuth } from "./components/AuthProvider";
 import InfoCard, { StatusBadge, ExplainerBox } from "./components/InfoCard";
 
-/**
- * Dashboard — The main landing page.
- *
- * Shows a quick overview of the app's status:
- * - Whether credentials are configured (in browser localStorage)
- * - Number of active rules on X's servers
- * - Stream connection status
- * - Quick-start guide for new users
- *
- * All API calls include the Bearer Token from localStorage
- * via the apiFetch wrapper (no env vars needed).
- */
 export default function DashboardPage() {
   const { token, apiFetch, loaded } = useAuth();
   const [status, setStatus] = useState({
@@ -27,7 +15,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!loaded) return;
-
     const hasToken = Boolean(token);
 
     if (!hasToken) {
@@ -69,132 +56,158 @@ export default function DashboardPage() {
   const allConfigured = status.auth.configured && status.rules.count > 0;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-text-primary">Dashboard</h1>
-        <p className="text-text-secondary mt-1">
-          Overview of your X Filtered Stream configuration
+    <div className="space-y-8">
+      {/* Hero Header */}
+      <div className="animate-fade-in-up">
+        <h1 className="font-display text-4xl font-black text-text-primary">الرئيسية</h1>
+        <p className="font-body text-text-secondary mt-2 text-base">
+          نظرة شاملة على حالة أداة تحليل التغريدات ومتابعتها لحظيًا
         </p>
       </div>
 
       {/* Status Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <StatusCard
-          title="Authentication"
+          title="التوثيق"
+          subtitle="ربط حسابك"
           loading={status.auth.loading}
           configured={status.auth.configured}
-          configuredLabel="Token configured"
-          notConfiguredLabel="Not configured"
+          configuredLabel="تم الربط"
+          notConfiguredLabel="لم يتم الربط بعد"
           href="/setup"
-          linkLabel="Go to Setup"
+          linkLabel="إعداد الحساب"
+          color="green"
+          delay="delay-1"
         />
         <StatusCard
-          title="Stream Rules"
+          title="قواعد التصفية"
+          subtitle="ماذا تريد متابعته؟"
           loading={status.rules.loading}
           configured={status.rules.count > 0}
-          configuredLabel={`${status.rules.count} active rule(s)`}
-          notConfiguredLabel={status.rules.error ? "Error loading" : "No rules set"}
+          configuredLabel={`${status.rules.count} قاعدة نشطة`}
+          notConfiguredLabel={status.rules.error ? "خطأ في التحميل" : "لا توجد قواعد"}
           href="/rules"
-          linkLabel="Manage Rules"
+          linkLabel="إدارة القواعد"
+          color="blue"
+          delay="delay-2"
         />
         <StatusCard
-          title="Live Stream"
+          title="البث المباشر"
+          subtitle="التغريدات لحظيًا"
           loading={status.stream.loading}
           configured={status.stream.connected}
-          configuredLabel="Connected"
-          notConfiguredLabel="Disconnected"
+          configuredLabel="متصل الآن"
+          notConfiguredLabel="غير متصل"
           href="/stream"
-          linkLabel="View Stream"
+          linkLabel="شاهد البث"
+          color="amber"
+          delay="delay-3"
         />
       </div>
 
-      {/* Quick Start Guide */}
+      {/* Flying Tweets Decoration + Getting Started */}
       {!allConfigured && (
-        <InfoCard
-          title="Getting Started"
-          description="Follow these steps to start streaming Posts from X in real-time"
-        >
-          <div className="space-y-4">
-            <ExplainerBox type="info" title="No environment variables needed!">
-              Your Bearer Token is stored in this browser&apos;s localStorage. Just paste it
-              on the Setup page and you&apos;re ready to go — no server config or redeployment required.
-            </ExplainerBox>
+        <div className="relative">
+          {/* Flying tweet decorations */}
+          <FlyingTweets />
 
-            <Step
-              number={1}
-              title="Configure your Bearer Token"
-              description="Get a Bearer Token from the X Developer Portal and add it on the Setup page. It's saved in your browser and sent securely with each API call."
-              done={status.auth.configured}
-              href="/setup"
-            />
-            <Step
-              number={2}
-              title="Add filter rules"
-              description='Rules define which Posts appear in your stream. For example: "#AI lang:en -is:retweet" matches English AI-related Posts that aren&apos;t retweets.'
-              done={status.rules.count > 0}
-              href="/rules"
-            />
-            <Step
-              number={3}
-              title="Start streaming"
-              description="Connect to the Filtered Stream to see matching Posts appear in real-time. The stream stays open until you stop it."
-              done={status.stream.connected}
-              href="/stream"
-            />
-          </div>
-        </InfoCard>
+          <InfoCard
+            title="ابدأ الآن"
+            description="ثلاث خطوات بسيطة لتبدأ متابعة التغريدات التي تهمك"
+            green
+          >
+            <div className="space-y-5">
+              <ExplainerBox type="tip" title="لا تحتاج أي إعدادات تقنية معقدة!">
+                كل ما تحتاجه هو مفتاح من منصة X للمطورين. تلصقه هنا مرة واحدة
+                ويُحفظ في متصفحك — لا حاجة لإعدادات خوادم أو متغيرات بيئية.
+              </ExplainerBox>
+
+              <Step
+                number={1}
+                title="أضف مفتاح الوصول"
+                description="احصل على Bearer Token من بوابة X للمطورين والصقه في صفحة الإعداد. فكّر فيه كمفتاح يعطيك صلاحية قراءة التغريدات."
+                done={status.auth.configured}
+                href="/setup"
+              />
+              <Step
+                number={2}
+                title="حدد قواعد المتابعة"
+                description='القواعد تحدد أي التغريدات تصلك. مثلًا: "#تقنية lang:ar" تعني أنك تريد التغريدات العربية عن التقنية.'
+                done={status.rules.count > 0}
+                href="/rules"
+              />
+              <Step
+                number={3}
+                title="ابدأ البث المباشر"
+                description="اضغط تشغيل وشاهد التغريدات المطابقة لقواعدك وهي تظهر أمامك لحظة بلحظة، كأنك تشاهد بثًا مباشرًا."
+                done={status.stream.connected}
+                href="/stream"
+              />
+            </div>
+          </InfoCard>
+        </div>
       )}
 
-      {/* How It Works */}
+      {/* How It Works — Non-technical pipeline */}
       <InfoCard
-        title="How It Works"
-        description="Understanding the Filtered Stream pipeline"
+        title="كيف تعمل الأداة؟"
+        description="شرح مبسط للآلية من البداية للنهاية"
       >
-        <div className="space-y-4">
-          <ExplainerBox type="info" title="What is Filtered Stream?">
-            The X API Filtered Stream lets you receive Posts in near real-time
-            that match rules you define. Instead of searching for Posts after they&apos;re
-            published, the stream pushes them to you as they happen (~6-7 second latency).
+        <div className="space-y-5">
+          <ExplainerBox type="info" title="ما هو البث المُصفّى؟">
+            تخيّل أنك تجلس أمام شاشة تعرض كل تغريدات العالم. البث المُصفّى يتيح لك
+            أن تختار فقط التغريدات التي تهمك — كأنك وضعت فلتر على هذه الشاشة.
+            بدلًا من البحث يدويًا، التغريدات تأتيك تلقائيًا لحظة نشرها.
           </ExplainerBox>
 
-          <div className="flex items-center gap-3 py-4 px-4 bg-surface-light rounded-lg text-sm overflow-x-auto">
-            <PipelineStep label="Your Rules" sublabel="Filter criteria" />
-            <Arrow />
-            <PipelineStep label="X API" sublabel="Matches Posts" />
-            <Arrow />
-            <PipelineStep label="Stream" sublabel="Real-time delivery" />
-            <Arrow />
-            <PipelineStep label="This App" sublabel="Display & process" />
+          {/* Animated Pipeline */}
+          <div className="flex items-center gap-2 py-5 px-4 bg-surface-light rounded-[16px] overflow-x-auto">
+            <PipelineStep label="قواعدك" sublabel="ماذا تريد؟" icon="filter" />
+            <AnimatedArrow />
+            <PipelineStep label="منصة X" sublabel="تبحث لك" icon="search" />
+            <AnimatedArrow />
+            <PipelineStep label="البث" sublabel="ترسل لحظيًا" icon="stream" />
+            <AnimatedArrow />
+            <PipelineStep label="هنا" sublabel="تظهر أمامك" icon="display" />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-            <div className="p-3 bg-surface-light rounded-lg">
-              <p className="font-medium text-text-primary">Rules (up to 1,000)</p>
-              <p className="text-text-secondary mt-1">
-                Define what Posts to receive using operators like keywords, hashtags,
-                usernames, language, and boolean logic.
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-4 bg-surface-light rounded-[12px]">
+              <p className="font-bold text-text-primary text-sm">القواعد (حتى 1,000 قاعدة)</p>
+              <p className="text-text-secondary text-xs mt-2 font-body leading-relaxed">
+                حدد كلمات مفتاحية، هاشتاقات، حسابات معينة، أو لغات محددة.
+                كل قاعدة تعمل بشكل مستقل — إذا تغريدة طابقت أي قاعدة، ستصلك.
               </p>
             </div>
-            <div className="p-3 bg-surface-light rounded-lg">
-              <p className="font-medium text-text-primary">Persistent connection</p>
-              <p className="text-text-secondary mt-1">
-                The stream is a long-lived HTTP connection. The app auto-reconnects
-                if it drops, with smart backoff strategies per error type.
+            <div className="p-4 bg-surface-light rounded-[12px]">
+              <p className="font-bold text-text-primary text-sm">اتصال مستمر</p>
+              <p className="text-text-secondary text-xs mt-2 font-body leading-relaxed">
+                الأداة تحافظ على اتصال دائم مع X. إذا انقطع الاتصال لأي سبب،
+                تعيد الاتصال تلقائيًا. لا تحتاج أن تفعل شيئًا.
               </p>
             </div>
+          </div>
+
+          {/* Conclusion Box */}
+          <div className="p-4 bg-brand-green-light/30 rounded-[12px] border border-brand-green/20">
+            <p className="font-bold text-brand-green text-sm mb-1">الخلاصة</p>
+            <p className="text-text-primary text-sm font-body leading-relaxed">
+              الأداة تعمل كمراقب ذكي — تحدد لها ما يهمك، وهي تجمع لك
+              التغريدات المطابقة لحظة نشرها. مفيدة لمتابعة الأحداث، رصد
+              المنافسين، تحليل الرأي العام، أو أي شيء يحدث على X.
+            </p>
           </div>
         </div>
       </InfoCard>
 
       {/* Stream Stats (if connected) */}
       {status.stream.stats && status.stream.stats.totalPosts > 0 && (
-        <InfoCard title="Stream Statistics">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Stat label="Total Posts" value={status.stream.stats.totalPosts} />
-            <Stat label="Duplicates Filtered" value={status.stream.stats.duplicatesFiltered} />
-            <Stat label="SSE Clients" value={status.stream.stats.connectedClients} />
-            <Stat label="Uptime" value={formatUptime(status.stream.stats.uptime)} />
+        <InfoCard title="إحصائيات البث">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+            <Stat label="إجمالي التغريدات" value={status.stream.stats.totalPosts} />
+            <Stat label="مكررات تم تصفيتها" value={status.stream.stats.duplicatesFiltered} />
+            <Stat label="متصلون الآن" value={status.stream.stats.connectedClients} />
+            <Stat label="مدة الاتصال" value={formatUptime(status.stream.stats.uptime)} />
           </div>
         </InfoCard>
       )}
@@ -202,13 +215,54 @@ export default function DashboardPage() {
   );
 }
 
-function StatusCard({ title, loading, configured, configuredLabel, notConfiguredLabel, href, linkLabel }) {
+/* ═══════════════════════════════════════════════════════
+   Flying Tweets — decorative animated tweet snippets
+   ═══════════════════════════════════════════════════════ */
+function FlyingTweets() {
+  const tweets = [
+    { text: "تقنية #AI", x: "5%", delay: "0s", duration: "7s" },
+    { text: "#بث_مباشر", x: "25%", delay: "1.5s", duration: "8s" },
+    { text: "تحليل البيانات", x: "50%", delay: "3s", duration: "6s" },
+    { text: "#ثمانية", x: "75%", delay: "0.8s", duration: "9s" },
+    { text: "رصد لحظي", x: "90%", delay: "2.5s", duration: "7.5s" },
+  ];
+
   return (
-    <div className="bg-surface border border-border rounded-xl p-5">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-medium text-text-secondary">{title}</h3>
+    <div className="absolute inset-0 pointer-events-none overflow-hidden -z-0">
+      {tweets.map((t, i) => (
+        <div
+          key={i}
+          className="absolute bottom-0 opacity-0"
+          style={{
+            right: t.x,
+            animation: `fly-up ${t.duration} ease-in-out ${t.delay} infinite`,
+          }}
+        >
+          <div className="bg-surface/80 backdrop-blur-sm border border-border rounded-[12px] px-3 py-2 shadow-card text-xs text-text-secondary whitespace-nowrap">
+            {t.text}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StatusCard({ title, subtitle, loading, configured, configuredLabel, notConfiguredLabel, href, linkLabel, color, delay }) {
+  const borderColors = {
+    green: "border-t-brand-green",
+    blue: "border-t-brand-blue",
+    amber: "border-t-amber",
+  };
+
+  return (
+    <div className={`animate-fade-in-up opacity-0 ${delay} bg-surface rounded-[16px] shadow-card hover:shadow-card-hover transition-all-fast p-5 border-t-[3px] ${borderColors[color]}`}>
+      <div className="mb-3">
+        <h3 className="font-bold text-text-primary text-sm">{title}</h3>
+        <p className="text-xs text-text-secondary mt-0.5">{subtitle}</p>
+      </div>
+      <div className="mb-3">
         {loading ? (
-          <span className="text-xs text-text-secondary">Loading...</span>
+          <div className="h-6 w-24 rounded-full animate-shimmer" />
         ) : (
           <StatusBadge
             status={configured ? "success" : "warning"}
@@ -218,9 +272,9 @@ function StatusCard({ title, loading, configured, configuredLabel, notConfigured
       </div>
       <Link
         href={href}
-        className="text-sm text-primary hover:text-primary-dark transition-all-fast"
+        className="text-sm text-link hover:underline font-bold transition-all-fast"
       >
-        {linkLabel} &rarr;
+        {linkLabel} &larr;
       </Link>
     </div>
   );
@@ -228,21 +282,21 @@ function StatusCard({ title, loading, configured, configuredLabel, notConfigured
 
 function Step({ number, title, description, done, href }) {
   return (
-    <div className="flex gap-4">
-      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-        done ? "bg-success/20 text-success" : "bg-surface-lighter text-text-secondary"
+    <div className="flex gap-4 animate-fade-in-up opacity-0" style={{ animationDelay: `${number * 0.15}s` }}>
+      <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-black ${
+        done ? "bg-brand-green/20 text-brand-green" : "bg-surface-lighter text-text-secondary"
       }`}>
         {done ? "\u2713" : number}
       </div>
       <div className="flex-1">
         <div className="flex items-center gap-2">
-          <h3 className={`font-medium ${done ? "text-success" : "text-text-primary"}`}>{title}</h3>
-          {done && <StatusBadge status="success" label="Done" />}
+          <h3 className={`font-bold ${done ? "text-brand-green" : "text-text-primary"}`}>{title}</h3>
+          {done && <StatusBadge status="success" label="تم" />}
         </div>
-        <p className="text-sm text-text-secondary mt-1">{description}</p>
+        <p className="text-sm text-text-secondary mt-1 font-body leading-relaxed">{description}</p>
         {!done && (
-          <Link href={href} className="text-sm text-primary hover:text-primary-dark mt-2 inline-block">
-            {title} &rarr;
+          <Link href={href} className="text-sm text-link hover:underline font-bold mt-2 inline-block">
+            {title} &larr;
           </Link>
         )}
       </div>
@@ -250,34 +304,48 @@ function Step({ number, title, description, done, href }) {
   );
 }
 
-function PipelineStep({ label, sublabel }) {
+function PipelineStep({ label, sublabel, icon }) {
+  const icons = {
+    filter: "\u2726",
+    search: "\u2315",
+    stream: "\u26A1",
+    display: "\u25C9",
+  };
+
   return (
-    <div className="text-center px-3 py-2 bg-surface-lighter rounded-lg flex-shrink-0">
-      <div className="font-medium text-text-primary">{label}</div>
-      <div className="text-xs text-text-secondary">{sublabel}</div>
+    <div className="text-center px-4 py-3 bg-surface rounded-[12px] shadow-card flex-shrink-0 min-w-[90px]">
+      <div className="text-xl mb-1">{icons[icon]}</div>
+      <div className="font-bold text-text-primary text-sm">{label}</div>
+      <div className="text-[11px] text-text-secondary">{sublabel}</div>
     </div>
   );
 }
 
-function Arrow() {
-  return <span className="text-text-secondary flex-shrink-0">&rarr;</span>;
+function AnimatedArrow() {
+  return (
+    <div className="flex items-center gap-0.5 flex-shrink-0">
+      <span className="w-1.5 h-1.5 rounded-full bg-brand-green animate-flow" />
+      <span className="w-1.5 h-1.5 rounded-full bg-brand-green animate-flow delay-1" />
+      <span className="w-1.5 h-1.5 rounded-full bg-brand-green animate-flow delay-2" />
+    </div>
+  );
 }
 
 function Stat({ label, value }) {
   return (
-    <div className="text-center">
-      <div className="text-2xl font-bold text-text-primary">{value}</div>
-      <div className="text-xs text-text-secondary mt-1">{label}</div>
+    <div className="text-center p-3 bg-surface-light rounded-[12px]">
+      <div className="font-display text-3xl font-black text-text-primary animate-score">{value}</div>
+      <div className="text-xs text-text-secondary mt-1 font-bold">{label}</div>
     </div>
   );
 }
 
 function formatUptime(seconds) {
-  if (!seconds || seconds === 0) return "0s";
+  if (!seconds || seconds === 0) return "0 ث";
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
-  if (h > 0) return `${h}h ${m}m`;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
+  if (h > 0) return `${h} س ${m} د`;
+  if (m > 0) return `${m} د ${s} ث`;
+  return `${s} ث`;
 }

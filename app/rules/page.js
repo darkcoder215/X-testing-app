@@ -4,23 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../components/AuthProvider";
 import InfoCard, { ExplainerBox, StatusBadge, ErrorDisplay } from "../components/InfoCard";
 
-/**
- * Rules Page — Manage Filtered Stream rules
- *
- * This page lets you:
- * - View all active rules with their IDs and tags
- * - Add new rules with a visual builder
- * - Delete individual rules or all rules at once
- * - See example rules with explanations
- *
- * All API calls use apiFetch which auto-includes the Bearer Token
- * from localStorage via the "X-Bearer-Token" header.
- *
- * WHY RULES MATTER:
- * Rules determine which Posts appear in your stream. Without rules,
- * the stream won't deliver any data. Rules persist on X's servers —
- * once added, they remain active even if you disconnect or restart.
- */
 export default function RulesPage() {
   const { apiFetch, token, loaded } = useAuth();
   const [rules, setRules] = useState([]);
@@ -34,7 +17,7 @@ export default function RulesPage() {
   const fetchRules = useCallback(async () => {
     if (!token) {
       setLoading(false);
-      setError({ error: "No Bearer Token configured.", code: "AUTH_NOT_CONFIGURED", hint: "Add your token on the Setup page." });
+      setError({ error: "لم تتم إضافة مفتاح الوصول بعد.", code: "AUTH_NOT_CONFIGURED", hint: "أضف المفتاح في صفحة الإعداد." });
       return;
     }
     try {
@@ -78,10 +61,10 @@ export default function RulesPage() {
       if (data.error || data.errors) {
         setFeedback({
           type: "error",
-          message: data.error || data.errors?.map((e) => e.title).join(", ") || "Failed to add rule",
+          message: data.error || data.errors?.map((e) => e.title).join(", ") || "فشل في إضافة القاعدة",
         });
       } else {
-        setFeedback({ type: "success", message: data.message });
+        setFeedback({ type: "success", message: "تمت إضافة القاعدة بنجاح" });
         setNewRule({ value: "", tag: "" });
         await fetchRules();
       }
@@ -103,7 +86,7 @@ export default function RulesPage() {
       if (data.error) {
         setFeedback({ type: "error", message: data.error });
       } else {
-        setFeedback({ type: "success", message: "Rule deleted" });
+        setFeedback({ type: "success", message: "تم حذف القاعدة" });
         await fetchRules();
       }
     } catch (err) {
@@ -114,7 +97,7 @@ export default function RulesPage() {
   }
 
   async function handleDeleteAll() {
-    if (!confirm("Delete all rules? This cannot be undone.")) return;
+    if (!confirm("هل تريد حذف جميع القواعد؟ لا يمكن التراجع.")) return;
 
     setDeleting("all");
     try {
@@ -123,7 +106,7 @@ export default function RulesPage() {
         body: JSON.stringify({ deleteAll: true }),
       });
       const data = await res.json();
-      setFeedback({ type: "success", message: data.message });
+      setFeedback({ type: "success", message: data.message || "تم حذف جميع القواعد" });
       await fetchRules();
     } catch (err) {
       setFeedback({ type: "error", message: err.message });
@@ -133,84 +116,96 @@ export default function RulesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-text-primary">Stream Rules</h1>
-        <p className="text-text-secondary mt-1">
-          Rules define which Posts appear in your stream. They persist on X&apos;s servers.
+      <div className="animate-fade-in-up">
+        <h1 className="font-display text-4xl font-black text-text-primary">القواعد</h1>
+        <p className="font-body text-text-secondary mt-2 text-base">
+          حدد ما تريد متابعته — القواعد تخبر X أي التغريدات ترسلها لك
         </p>
       </div>
 
       {/* Feedback */}
       {feedback && (
-        <div className={`p-3 rounded-lg text-sm ${
+        <div className={`p-4 rounded-[12px] text-sm font-bold animate-fade-in-up ${
           feedback.type === "success"
-            ? "bg-success/10 text-success border border-success/20"
-            : "bg-error/10 text-error border border-error/20"
+            ? "bg-brand-green-light/30 text-brand-green border border-brand-green/20"
+            : "bg-blush/40 text-brand-red border border-brand-red/20"
         }`}>
           {feedback.message}
         </div>
       )}
 
+      {/* What are rules — simple explanation */}
+      <ExplainerBox type="info" title="ما هي القواعد؟">
+        القواعد تشبه فلتر البحث — تكتب كلمات أو شروط، وX ترسل لك فقط التغريدات
+        التي تطابقها. مثلًا: إذا كتبت &quot;#كرة_قدم&quot;، ستصلك كل التغريدات التي تحتوي
+        هذا الهاشتاق. يمكنك إضافة حتى 1,000 قاعدة مختلفة تعمل معًا.
+      </ExplainerBox>
+
       {/* Add New Rule */}
       <InfoCard
-        title="Add a Rule"
-        description="Create a filter rule using X's query operators. Each rule defines a set of matching criteria."
+        title="أضف قاعدة جديدة"
+        description="اكتب الكلمات أو الشروط التي تريد تصفية التغريدات بها"
       >
         <form onSubmit={handleAddRule} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">
-              Rule value <span className="text-text-secondary font-normal">(required)</span>
+            <label className="block text-sm font-bold text-text-primary mb-2">
+              نص القاعدة <span className="text-text-muted font-normal">(مطلوب)</span>
             </label>
             <input
               type="text"
               value={newRule.value}
               onChange={(e) => setNewRule({ ...newRule, value: e.target.value })}
-              placeholder='e.g., #AI lang:en -is:retweet'
-              className="w-full px-4 py-2.5 bg-surface-light border border-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm font-mono"
+              placeholder='مثال: #تقنية lang:ar -is:retweet'
+              dir="ltr"
+              className="w-full px-4 py-3 bg-surface-light border border-border rounded-[12px] text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 text-sm font-mono"
             />
-            <p className="text-xs text-text-secondary mt-1.5">
-              {newRule.value.length}/1,024 characters (pay-per-use) or 2,048 (Enterprise).
+            <p className="text-xs text-text-secondary mt-2 font-body">
+              {newRule.value.length}/1,024 حرف.
               {newRule.value.length > 1024 && (
-                <span className="text-warning"> Exceeds pay-per-use limit.</span>
+                <span className="text-brand-red font-bold"> تجاوزت الحد الأقصى!</span>
               )}
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">
-              Tag <span className="text-text-secondary font-normal">(optional)</span>
+            <label className="block text-sm font-bold text-text-primary mb-2">
+              تسمية <span className="text-text-muted font-normal">(اختياري)</span>
             </label>
             <input
               type="text"
               value={newRule.tag}
               onChange={(e) => setNewRule({ ...newRule, tag: e.target.value })}
-              placeholder="e.g., AI English tweets"
-              className="w-full px-4 py-2.5 bg-surface-light border border-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm"
+              placeholder="مثال: تغريدات تقنية عربية"
+              className="w-full px-4 py-3 bg-surface-light border border-border rounded-[12px] text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 text-sm"
             />
-            <p className="text-xs text-text-secondary mt-1.5">
-              A label to identify this rule. Shows in matching_rules when a Post matches.
+            <p className="text-xs text-text-secondary mt-2 font-body">
+              التسمية تساعدك على تمييز كل قاعدة. تظهر مع كل تغريدة مطابقة.
             </p>
           </div>
 
           <button
             type="submit"
             disabled={adding || !newRule.value.trim() || !token}
-            className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-all-fast"
+            className="btn-accent disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {adding ? "Adding..." : "Add Rule"}
+            {adding ? "جارٍ الإضافة..." : "أضف القاعدة"}
           </button>
         </form>
       </InfoCard>
 
       {/* Current Rules */}
       <InfoCard
-        title="Active Rules"
-        description={`${rules.length} rule(s) currently registered on X's servers`}
+        title="القواعد النشطة"
+        description={`${rules.length} قاعدة مسجلة حاليًا على خوادم X`}
       >
         {loading ? (
-          <p className="text-text-secondary text-sm">Loading rules...</p>
+          <div className="space-y-3">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-16 rounded-[12px] animate-shimmer" />
+            ))}
+          </div>
         ) : error ? (
           <ErrorDisplay
             error={error.error}
@@ -219,38 +214,43 @@ export default function RulesPage() {
             onRetry={fetchRules}
           />
         ) : rules.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-text-secondary text-sm">No rules configured yet.</p>
-            <p className="text-text-secondary text-xs mt-1">Add a rule above to start receiving Posts.</p>
+          <div className="text-center py-10">
+            <div className="text-4xl mb-3 opacity-30">&#9778;</div>
+            <p className="text-text-secondary font-bold text-sm">لا توجد قواعد بعد</p>
+            <p className="text-text-muted text-xs mt-1 font-body">أضف قاعدة أعلاه لبدء استقبال التغريدات</p>
           </div>
         ) : (
           <div className="space-y-3">
             <div className="flex items-center justify-between mb-4">
-              <span className="text-sm text-text-secondary">{rules.length} rule(s)</span>
+              <span className="text-sm text-text-secondary font-bold">{rules.length} قاعدة</span>
               <button
                 onClick={handleDeleteAll}
                 disabled={deleting === "all"}
-                className="px-3 py-1 text-xs text-error border border-error/20 rounded hover:bg-error/10 disabled:opacity-50 transition-all-fast"
+                className="px-4 py-2 text-xs text-brand-red border border-brand-red/20 rounded-full hover:bg-brand-red/10 disabled:opacity-50 transition-all-fast font-bold"
               >
-                {deleting === "all" ? "Deleting..." : "Delete All"}
+                {deleting === "all" ? "جارٍ الحذف..." : "حذف الكل"}
               </button>
             </div>
 
-            {rules.map((rule) => (
-              <div key={rule.id} className="flex items-start gap-3 p-4 bg-surface-light rounded-lg border border-border">
+            {rules.map((rule, i) => (
+              <div
+                key={rule.id}
+                className="flex items-start gap-4 p-4 bg-surface-light rounded-[12px] border border-border animate-fade-in-up opacity-0"
+                style={{ animationDelay: `${i * 0.05}s` }}
+              >
                 <div className="flex-1 min-w-0">
-                  <code className="text-sm text-primary font-mono break-all">{rule.value}</code>
+                  <code className="text-sm text-link font-mono break-all" dir="ltr">{rule.value}</code>
                   <div className="flex items-center gap-3 mt-2">
                     {rule.tag && <StatusBadge status="info" label={rule.tag} />}
-                    <span className="text-xs text-text-secondary font-mono">ID: {rule.id}</span>
+                    <span className="text-[11px] text-text-muted font-mono" dir="ltr">ID: {rule.id}</span>
                   </div>
                 </div>
                 <button
                   onClick={() => handleDeleteRule(rule.id)}
                   disabled={deleting === rule.id}
-                  className="flex-shrink-0 px-2 py-1 text-xs text-error border border-error/20 rounded hover:bg-error/10 disabled:opacity-50 transition-all-fast"
+                  className="flex-shrink-0 px-3 py-1.5 text-xs text-brand-red border border-brand-red/20 rounded-full hover:bg-brand-red/10 disabled:opacity-50 transition-all-fast font-bold"
                 >
-                  {deleting === rule.id ? "..." : "Delete"}
+                  {deleting === rule.id ? "..." : "حذف"}
                 </button>
               </div>
             ))}
@@ -260,50 +260,57 @@ export default function RulesPage() {
 
       {/* Rule Syntax Guide */}
       <InfoCard
-        title="Rule Syntax Guide"
-        description="How to write effective filter rules"
+        title="دليل كتابة القواعد"
+        description="أمثلة وشرح لمساعدتك في كتابة قواعد فعالة"
       >
-        <div className="space-y-4">
-          <ExplainerBox type="info" title="How rules work">
-            Rules use the same query language as X search. You can combine operators
-            with AND (space), OR, NOT (-), and grouping (parentheses). Each rule is
-            evaluated independently — a Post matches if it satisfies ANY of your rules.
+        <div className="space-y-5">
+          <ExplainerBox type="tip" title="كيف تعمل القواعد؟">
+            القواعد تستخدم نفس لغة البحث في X. يمكنك دمج كلمات مع شروط
+            باستخدام المسافة (و)، أو OR (أو)، أو علامة - (استبعاد).
+            كل قاعدة تعمل مستقلة — التغريدة تصلك إذا طابقت أي قاعدة.
           </ExplainerBox>
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-2 px-3 text-text-secondary font-medium">Example Rule</th>
-                  <th className="text-left py-2 px-3 text-text-secondary font-medium">What It Matches</th>
+                <tr className="bg-brand-black text-white rounded-t-[12px]">
+                  <th className="text-right py-3 px-4 font-bold rounded-tr-[12px]">القاعدة</th>
+                  <th className="text-right py-3 px-4 font-bold rounded-tl-[12px]">ماذا تطابق؟</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody>
                 {EXAMPLE_RULES.map((ex, i) => (
-                  <tr key={i} className="hover:bg-surface-light">
-                    <td className="py-2.5 px-3">
-                      <code className="text-primary text-xs font-mono">{ex.value}</code>
+                  <tr key={i} className={i % 2 === 0 ? "bg-surface" : "bg-surface-light"}>
+                    <td className="py-3 px-4">
+                      <code className="text-link text-xs font-mono" dir="ltr">{ex.value}</code>
                     </td>
-                    <td className="py-2.5 px-3 text-text-secondary">{ex.description}</td>
+                    <td className="py-3 px-4 text-text-secondary font-body text-xs">{ex.description}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          <ExplainerBox type="tip" title="Common operators">
-            <ul className="space-y-1 mt-1">
-              <li><code className="text-xs">from:username</code> — Posts by a specific user</li>
-              <li><code className="text-xs">to:username</code> — Replies to a specific user</li>
-              <li><code className="text-xs">#hashtag</code> — Posts containing a hashtag</li>
-              <li><code className="text-xs">lang:en</code> — Posts in a specific language</li>
-              <li><code className="text-xs">has:images</code> — Posts with images attached</li>
-              <li><code className="text-xs">has:links</code> — Posts containing URLs</li>
-              <li><code className="text-xs">-is:retweet</code> — Exclude retweets</li>
-              <li><code className="text-xs">-is:reply</code> — Exclude replies</li>
-              <li><code className="text-xs">&quot;exact phrase&quot;</code> — Match an exact phrase</li>
+          <ExplainerBox type="info" title="أهم الأوامر المستخدمة">
+            <ul className="space-y-1.5 mt-1 font-body">
+              <li><code className="text-xs text-link" dir="ltr">from:username</code> — تغريدات حساب معين</li>
+              <li><code className="text-xs text-link" dir="ltr">to:username</code> — ردود على حساب معين</li>
+              <li><code className="text-xs text-link" dir="ltr">#هاشتاق</code> — تغريدات تحتوي هاشتاق</li>
+              <li><code className="text-xs text-link" dir="ltr">lang:ar</code> — تغريدات بلغة معينة</li>
+              <li><code className="text-xs text-link" dir="ltr">has:images</code> — تغريدات فيها صور</li>
+              <li><code className="text-xs text-link" dir="ltr">-is:retweet</code> — استبعاد إعادة التغريد</li>
+              <li><code className="text-xs text-link" dir="ltr">&quot;عبارة بالضبط&quot;</code> — مطابقة تامة لعبارة</li>
             </ul>
           </ExplainerBox>
+
+          {/* Conclusion */}
+          <div className="p-4 bg-brand-green-light/30 rounded-[12px] border border-brand-green/20">
+            <p className="font-bold text-brand-green text-sm mb-1">الخلاصة</p>
+            <p className="text-text-primary text-sm font-body leading-relaxed">
+              ابدأ بقاعدة بسيطة مثل هاشتاق واحد. جرّب البث وشاهد النتائج.
+              ثم عدّل القاعدة وأضف شروطًا أكثر حتى تحصل على التغريدات التي تحتاجها تمامًا.
+            </p>
+          </div>
         </div>
       </InfoCard>
     </div>
@@ -311,10 +318,9 @@ export default function RulesPage() {
 }
 
 const EXAMPLE_RULES = [
-  { value: "#python", description: "Posts with the #python hashtag" },
-  { value: "from:elonmusk", description: "Posts by @elonmusk" },
-  { value: '"breaking news" has:images', description: "Posts with exact phrase and images" },
-  { value: "(@XDevelopers OR @X) -is:retweet", description: "Mentions, excluding retweets" },
-  { value: '(AI OR "machine learning") lang:en -is:retweet', description: "AI-related English Posts, no RTs" },
-  { value: "#tech has:links -is:retweet -is:reply", description: "Tech posts with links, original only" },
+  { value: "#بايثون", description: "تغريدات تحتوي هاشتاق #بايثون" },
+  { value: "from:elonmusk", description: "تغريدات من حساب إيلون ماسك" },
+  { value: '"أخبار عاجلة" has:images', description: "تغريدات فيها عبارة أخبار عاجلة مع صور" },
+  { value: "(AI OR #ذكاء_اصطناعي) lang:ar -is:retweet", description: "تغريدات عربية عن الذكاء الاصطناعي بدون ريتويت" },
+  { value: "#تقنية has:links -is:reply", description: "تغريدات تقنية فيها روابط، أصلية فقط" },
 ];

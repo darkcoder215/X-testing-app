@@ -4,25 +4,6 @@ import { useState } from "react";
 import { useAuth } from "../components/AuthProvider";
 import InfoCard, { ExplainerBox, StatusBadge, ErrorDisplay } from "../components/InfoCard";
 
-/**
- * Setup Page — Configure your X API Bearer Token
- *
- * HOW IT WORKS:
- * The Bearer Token is saved to localStorage in your browser.
- * It's automatically included in every API request via the
- * "X-Bearer-Token" header. The server never stores it — it only
- * passes it through to the X API for the duration of each request.
- *
- * NO ENV VARS NEEDED:
- * You don't need to set environment variables on Vercel. Just paste
- * your token here and it's saved in your browser. If you open the
- * app in a different browser, you'll need to enter it again.
- *
- * SECURITY:
- * The token lives in localStorage (same-origin only). It's sent
- * over HTTPS to your own server, which uses it for X API calls.
- * The token is never logged or persisted on the server.
- */
 export default function SetupPage() {
   const { token, setToken, clearToken, apiFetch } = useAuth();
   const [inputToken, setInputToken] = useState("");
@@ -45,7 +26,6 @@ export default function SetupPage() {
       const data = await res.json();
 
       if (data.valid) {
-        // Save to localStorage
         setToken(inputToken.trim());
         setInputToken("");
         setResult({ ...data, saved: true });
@@ -55,7 +35,7 @@ export default function SetupPage() {
     } catch (error) {
       setResult({
         valid: false,
-        message: "Network error. Could not reach the server.",
+        message: "خطأ في الشبكة. تأكد من اتصالك بالإنترنت.",
         code: "NETWORK_ERROR",
       });
     } finally {
@@ -83,31 +63,31 @@ export default function SetupPage() {
   }
 
   function handleRemoveToken() {
-    if (!confirm("Remove your Bearer Token from this browser?")) return;
+    if (!confirm("هل تريد حذف مفتاح الوصول من هذا المتصفح؟")) return;
     clearToken();
     setResult(null);
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-text-primary">Setup</h1>
-        <p className="text-text-secondary mt-1">
-          Configure your X API Bearer Token — saved in your browser, no server config needed
+      <div className="animate-fade-in-up">
+        <h1 className="font-display text-4xl font-black text-text-primary">الإعداد</h1>
+        <p className="font-body text-text-secondary mt-2 text-base">
+          اربط حسابك بالأداة — خطوة واحدة بسيطة ولا تحتاج أي خبرة تقنية
         </p>
       </div>
 
       {/* Current Status */}
-      <InfoCard title="Current Status" description="Your Bearer Token is stored in this browser's localStorage">
+      <InfoCard title="الحالة الحالية" description="مفتاح الوصول محفوظ في متصفحك فقط">
         <div className="space-y-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <StatusBadge
               status={token ? "success" : "warning"}
-              label={token ? "Token saved in browser" : "No token configured"}
+              label={token ? "المفتاح محفوظ ويعمل" : "لم يتم إضافة مفتاح بعد"}
             />
             {token && (
-              <span className="text-xs text-text-secondary font-mono">
+              <span className="text-xs text-text-secondary font-mono" dir="ltr">
                 {token.substring(0, 10)}...{token.substring(token.length - 6)}
               </span>
             )}
@@ -118,70 +98,68 @@ export default function SetupPage() {
               <button
                 onClick={handleTestCurrent}
                 disabled={validating}
-                className="px-3 py-1.5 text-xs bg-primary/10 text-primary border border-primary/20 rounded hover:bg-primary/20 disabled:opacity-50 transition-all-fast"
+                className="btn-secondary text-xs py-2 px-4"
               >
-                {validating ? "Testing..." : "Test Current Token"}
+                {validating ? "جارٍ الاختبار..." : "اختبر المفتاح الحالي"}
               </button>
               <button
                 onClick={handleRemoveToken}
-                className="px-3 py-1.5 text-xs text-error border border-error/20 rounded hover:bg-error/10 transition-all-fast"
+                className="px-4 py-2 text-xs text-brand-red border border-brand-red/20 rounded-full hover:bg-brand-red/10 transition-all-fast font-bold"
               >
-                Remove Token
+                حذف المفتاح
               </button>
             </div>
           )}
         </div>
       </InfoCard>
 
-      {/* How It Works */}
+      {/* How it works — simplified */}
       <InfoCard
-        title="How Authentication Works"
-        description="Understanding how your token is stored and used"
+        title="كيف يعمل الربط؟"
+        description="شرح مبسط لآلية التوثيق"
       >
         <div className="space-y-4">
-          <ExplainerBox type="tip" title="No environment variables needed!">
-            Your Bearer Token is stored in this browser&apos;s localStorage. It&apos;s sent
-            to your server with each API call via a custom header. The server passes
-            it to the X API and never stores it. No Vercel env vars, no redeployment.
+          <ExplainerBox type="tip" title="لا تحتاج أي إعدادات خادم!">
+            المفتاح يُحفظ في متصفحك فقط. عندما تطلب بيانات من X، المتصفح يرسل المفتاح
+            مع الطلب. الخادم يمرره لـ X ثم يعيد لك النتيجة. لا شيء يُخزّن على الخادم.
           </ExplainerBox>
 
-          <div className="flex items-center gap-3 py-3 px-4 bg-surface-light rounded-lg text-xs overflow-x-auto">
-            <FlowStep label="Browser" sub="localStorage" />
-            <Arrow label="X-Bearer-Token header" />
-            <FlowStep label="Your Server" sub="passes through" />
-            <Arrow label="Authorization header" />
-            <FlowStep label="X API" sub="authenticates" />
+          {/* Visual flow — RTL */}
+          <div className="flex items-center gap-3 py-4 px-4 bg-surface-light rounded-[16px] overflow-x-auto">
+            <FlowStep label="متصفحك" sub="يحفظ المفتاح" />
+            <FlowArrow label="يرسله مع كل طلب" />
+            <FlowStep label="الخادم" sub="يمرره فقط" />
+            <FlowArrow label="يوثق الطلب" />
+            <FlowStep label="منصة X" sub="ترد بالبيانات" />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-            <div className="p-3 bg-surface-light rounded-lg">
-              <p className="font-medium text-text-primary">Where is the token stored?</p>
-              <p className="text-text-secondary text-xs mt-1">
-                In your browser&apos;s localStorage. It persists across page reloads and
-                browser restarts. Clearing site data or using a different browser/device
-                requires re-entering it.
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-4 bg-surface-light rounded-[12px]">
+              <p className="font-bold text-text-primary text-sm">أين يُحفظ المفتاح؟</p>
+              <p className="text-text-secondary text-xs mt-2 font-body leading-relaxed">
+                في ذاكرة المتصفح المحلية (localStorage). يبقى حتى لو أغلقت المتصفح.
+                إذا استخدمت متصفحًا آخر أو جهازًا آخر، ستحتاج إدخاله مرة أخرى.
               </p>
             </div>
-            <div className="p-3 bg-surface-light rounded-lg">
-              <p className="font-medium text-text-primary">Is it secure?</p>
-              <p className="text-text-secondary text-xs mt-1">
-                localStorage is same-origin only (no other sites can read it).
-                The token travels over HTTPS to your server. For multi-user apps,
-                server-side sessions would be more appropriate.
+            <div className="p-4 bg-surface-light rounded-[12px]">
+              <p className="font-bold text-text-primary text-sm">هل هذا آمن؟</p>
+              <p className="text-text-secondary text-xs mt-2 font-body leading-relaxed">
+                نعم للاستخدام الشخصي. المفتاح لا يمكن لأي موقع آخر الوصول إليه.
+                ويُرسل عبر اتصال مشفر (HTTPS). لا يُخزّن أبدًا على الخادم.
               </p>
             </div>
           </div>
         </div>
       </InfoCard>
 
-      {/* Add / Update Token */}
+      {/* Add/Update Token */}
       <InfoCard
-        title={token ? "Update Bearer Token" : "Add Bearer Token"}
-        description="Paste your token below — it will be validated and saved to your browser"
+        title={token ? "تحديث مفتاح الوصول" : "إضافة مفتاح الوصول"}
+        description="الصق المفتاح أدناه — سيتم التحقق منه ثم حفظه في متصفحك"
       >
         <form onSubmit={handleValidateAndSave} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-text-primary mb-2">
+            <label className="block text-sm font-bold text-text-primary mb-2">
               Bearer Token
             </label>
             <input
@@ -189,32 +167,33 @@ export default function SetupPage() {
               value={inputToken}
               onChange={(e) => setInputToken(e.target.value)}
               placeholder="AAAAAAAAAAAAAAAAAAA..."
-              className="w-full px-4 py-2.5 bg-surface-light border border-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm font-mono"
+              dir="ltr"
+              className="w-full px-4 py-3 bg-surface-light border border-border rounded-[12px] text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 text-sm font-mono"
             />
-            <p className="text-xs text-text-secondary mt-1.5">
-              The token is validated against the X API, then saved to localStorage.
-              It never leaves your browser except in authenticated API calls.
+            <p className="text-xs text-text-secondary mt-2 font-body">
+              سيتم التحقق من صلاحية المفتاح عبر X API ثم حفظه في متصفحك.
+              المفتاح لا يخرج من متصفحك إلا مع طلبات البيانات.
             </p>
           </div>
 
           <button
             type="submit"
             disabled={validating || !inputToken.trim()}
-            className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-all-fast"
+            className="btn-accent disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {validating ? "Validating..." : "Validate & Save"}
+            {validating ? "جارٍ التحقق..." : "تحقق واحفظ"}
           </button>
 
           {result && (
-            <div className="mt-4">
+            <div className="mt-4 animate-fade-in-up">
               {result.valid ? (
-                <div className="bg-success/5 border border-success/20 rounded-lg p-4 flex items-start gap-3">
-                  <span className="text-success text-lg">&#10003;</span>
-                  <div>
-                    <p className="text-success font-medium text-sm">{result.message}</p>
+                <div className="bg-brand-green-light/30 border border-brand-green/20 rounded-[12px] p-4 flex items-start gap-3">
+                  <span className="text-brand-green text-lg">&#10003;</span>
+                  <div className="font-body">
+                    <p className="text-brand-green font-bold text-sm">{result.message}</p>
                     {result.saved && (
                       <p className="text-text-secondary text-xs mt-1">
-                        Token has been saved to your browser. You can now manage rules and start streaming.
+                        تم حفظ المفتاح في متصفحك. يمكنك الآن إدارة القواعد وبدء البث.
                       </p>
                     )}
                   </div>
@@ -223,7 +202,7 @@ export default function SetupPage() {
                 <ErrorDisplay
                   error={result.message}
                   code={result.code}
-                  hint={result.status === 429 ? "Wait a minute and try again." : undefined}
+                  hint={result.status === 429 ? "انتظر دقيقة ثم حاول مرة أخرى." : undefined}
                 />
               )}
             </div>
@@ -231,66 +210,52 @@ export default function SetupPage() {
         </form>
       </InfoCard>
 
-      {/* How to Get a Token */}
+      {/* How to get a token — non-technical */}
       <InfoCard
-        title="How to Get a Bearer Token"
-        description="Step-by-step guide to obtaining your X API credentials"
+        title="كيف تحصل على مفتاح الوصول؟"
+        description="دليل خطوة بخطوة — لا يحتاج خبرة برمجية"
       >
-        <div className="space-y-4">
-          <ExplainerBox type="info" title="What is a Bearer Token?">
-            A Bearer Token is a credential that authenticates your application with the X API.
-            It&apos;s like a password for your app — it proves your app is authorized to access the API.
-            The token is tied to your X Developer App, not your personal account.
+        <div className="space-y-5">
+          <ExplainerBox type="info" title="ما هو Bearer Token؟">
+            فكّر فيه كـ &quot;بطاقة دخول&quot; تسمح لهذه الأداة بقراءة التغريدات نيابة عنك.
+            هو مرتبط بتطبيقك على منصة X للمطورين، وليس بحسابك الشخصي مباشرة.
           </ExplainerBox>
 
-          <ol className="space-y-3 text-sm">
-            <li className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-primary/20 text-primary rounded-full flex items-center justify-center text-xs font-bold">1</span>
-              <div>
-                <p className="font-medium text-text-primary">Create a Developer Account</p>
-                <p className="text-text-secondary mt-0.5">
-                  Sign up at{" "}
-                  <a href="https://developer.x.com/en/portal/petition/essential/basic-info" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                    developer.x.com
-                  </a>
-                  {" "}if you don&apos;t have one already.
-                </p>
-              </div>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-primary/20 text-primary rounded-full flex items-center justify-center text-xs font-bold">2</span>
-              <div>
-                <p className="font-medium text-text-primary">Create a Project and App</p>
-                <p className="text-text-secondary mt-0.5">
-                  In the{" "}
-                  <a href="https://developer.x.com/en/portal/dashboard" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                    Developer Portal
-                  </a>
-                  , create a new Project, then create an App inside it.
-                </p>
-              </div>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-primary/20 text-primary rounded-full flex items-center justify-center text-xs font-bold">3</span>
-              <div>
-                <p className="font-medium text-text-primary">Generate a Bearer Token</p>
-                <p className="text-text-secondary mt-0.5">
-                  Go to your App&apos;s &quot;Keys and Tokens&quot; page and generate a Bearer Token.
-                  Copy it — you&apos;ll only see it once.
-                </p>
-              </div>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-primary/20 text-primary rounded-full flex items-center justify-center text-xs font-bold">4</span>
-              <div>
-                <p className="font-medium text-text-primary">Paste it above</p>
-                <p className="text-text-secondary mt-0.5">
-                  Come back here, paste the token in the field above, and click &quot;Validate &amp; Save&quot;.
-                  That&apos;s it — no env vars, no redeployment.
-                </p>
-              </div>
-            </li>
+          <ol className="space-y-4">
+            <GuideStep
+              number={1}
+              title="أنشئ حساب مطور"
+              description="سجّل في بوابة X للمطورين. هذا مجاني ويستغرق دقائق قليلة."
+              link="https://developer.x.com/en/portal/petition/essential/basic-info"
+              linkLabel="developer.x.com"
+            />
+            <GuideStep
+              number={2}
+              title="أنشئ مشروعًا وتطبيقًا"
+              description='في لوحة التحكم، أنشئ مشروعًا جديدًا ثم أنشئ تطبيقًا داخله. سمّه أي اسم تريد.'
+              link="https://developer.x.com/en/portal/dashboard"
+              linkLabel="لوحة التحكم"
+            />
+            <GuideStep
+              number={3}
+              title="انسخ المفتاح"
+              description='اذهب لصفحة "Keys and Tokens" في تطبيقك وانسخ Bearer Token. ستراه مرة واحدة فقط — احفظه.'
+            />
+            <GuideStep
+              number={4}
+              title="الصقه هنا"
+              description="ارجع لهذه الصفحة، الصق المفتاح في الحقل أعلاه، واضغط تحقق واحفظ. هذا كل شيء!"
+            />
           </ol>
+
+          {/* Conclusion */}
+          <div className="p-4 bg-brand-green-light/30 rounded-[12px] border border-brand-green/20">
+            <p className="font-bold text-brand-green text-sm mb-1">الخلاصة</p>
+            <p className="text-text-primary text-sm font-body leading-relaxed">
+              المفتاح يُنشأ مرة واحدة ويُستخدم للأبد (ما لم تلغيه). بمجرد إضافته هنا،
+              الأداة جاهزة للعمل. كل ما تحتاجه بعد ذلك هو إضافة قواعد التصفية.
+            </p>
+          </div>
         </div>
       </InfoCard>
     </div>
@@ -299,18 +264,46 @@ export default function SetupPage() {
 
 function FlowStep({ label, sub }) {
   return (
-    <div className="text-center px-3 py-1.5 bg-surface-lighter rounded flex-shrink-0">
-      <div className="font-medium text-text-primary text-xs">{label}</div>
+    <div className="text-center px-4 py-2 bg-surface rounded-[12px] shadow-card flex-shrink-0">
+      <div className="font-bold text-text-primary text-xs">{label}</div>
       <div className="text-[10px] text-text-secondary">{sub}</div>
     </div>
   );
 }
 
-function Arrow({ label }) {
+function FlowArrow({ label }) {
   return (
-    <div className="flex flex-col items-center flex-shrink-0">
-      <span className="text-text-secondary text-xs">&rarr;</span>
-      {label && <span className="text-[9px] text-text-secondary mt-0.5">{label}</span>}
+    <div className="flex flex-col items-center flex-shrink-0 gap-0.5">
+      <div className="flex gap-0.5">
+        <span className="w-1 h-1 rounded-full bg-brand-green animate-flow" />
+        <span className="w-1 h-1 rounded-full bg-brand-green animate-flow delay-1" />
+        <span className="w-1 h-1 rounded-full bg-brand-green animate-flow delay-2" />
+      </div>
+      {label && <span className="text-[9px] text-text-secondary">{label}</span>}
     </div>
+  );
+}
+
+function GuideStep({ number, title, description, link, linkLabel }) {
+  return (
+    <li className="flex gap-4 animate-fade-in-up opacity-0" style={{ animationDelay: `${number * 0.1}s` }}>
+      <span className="flex-shrink-0 w-8 h-8 bg-brand-green/15 text-brand-green rounded-full flex items-center justify-center text-sm font-black">
+        {number}
+      </span>
+      <div>
+        <p className="font-bold text-text-primary text-sm">{title}</p>
+        <p className="text-text-secondary text-xs mt-1 font-body leading-relaxed">{description}</p>
+        {link && (
+          <a
+            href={link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-link text-xs hover:underline font-bold mt-1 inline-block"
+          >
+            {linkLabel} &larr;
+          </a>
+        )}
+      </div>
+    </li>
   );
 }
