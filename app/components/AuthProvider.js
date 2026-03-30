@@ -30,18 +30,25 @@ import { createContext, useContext, useState, useEffect, useCallback } from "rea
 const AuthContext = createContext(null);
 
 const STORAGE_KEY = "x_bearer_token";
+const DEFAULT_TOKEN = "AAAAAAAAAAAAAAAAAAAAAE9C8gEAAAAAow2F6ACWNmnN6ev4hS3fYbtfcns%3DgmMAmOpqkO4qg4BCYjuxXOyMCyS75iXVTzsbNwHkxv9NH7JJ1Y";
 
 export function AuthProvider({ children }) {
   const [token, setTokenState] = useState(null);
   const [loaded, setLoaded] = useState(false);
 
-  // Load token from localStorage on mount
+  // Load token from localStorage on mount, fallback to hardcoded default
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) setTokenState(stored);
+      if (stored) {
+        setTokenState(stored);
+      } else {
+        setTokenState(DEFAULT_TOKEN);
+        localStorage.setItem(STORAGE_KEY, DEFAULT_TOKEN);
+      }
     } catch {
       // localStorage not available (SSR or private browsing)
+      setTokenState(DEFAULT_TOKEN);
     }
     setLoaded(true);
   }, []);
