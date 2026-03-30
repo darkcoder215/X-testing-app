@@ -5,12 +5,11 @@ import { useAuth } from "../components/AuthProvider";
 import InfoCard, { ExplainerBox, StatusBadge, ErrorDisplay } from "../components/InfoCard";
 import ENDPOINTS, { getEndpointsByCategory } from "@/lib/endpoints";
 
-// Arabic labels for endpoint categories
 const CATEGORY_AR = { Posts: "التغريدات", Users: "الحسابات", Account: "حسابك" };
 
 export default function ExplorePage() {
   const { token, apiFetch } = useAuth();
-  const [selectedEndpoint, setSelectedEndpoint] = useState("post-lookup");
+  const [selectedEndpoint, setSelectedEndpoint] = useState("search-recent");
   const [paramValues, setParamValues] = useState({});
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -29,6 +28,10 @@ export default function ExplorePage() {
     setShowAdvanced(false);
   }, [selectedEndpoint]);
 
+  function setParam(name, value) {
+    setParamValues((prev) => ({ ...prev, [name]: value }));
+  }
+
   async function handleSend() {
     if (!token) {
       setResult({ error: "لم تتم إضافة مفتاح الوصول بعد.", code: "AUTH_NOT_CONFIGURED" });
@@ -37,9 +40,16 @@ export default function ExplorePage() {
     setLoading(true);
     setResult(null);
     try {
+      // Convert date values to ISO format for the API
+      const apiParams = { ...paramValues };
+      for (const param of endpoint?.params || []) {
+        if (param.inputType === "date" && apiParams[param.name]) {
+          apiParams[param.name] = new Date(apiParams[param.name]).toISOString();
+        }
+      }
       const res = await apiFetch("/api/x", {
         method: "POST",
-        body: JSON.stringify({ endpointKey: selectedEndpoint, params: paramValues }),
+        body: JSON.stringify({ endpointKey: selectedEndpoint, params: apiParams }),
       });
       const data = await res.json();
       setResult(data);
@@ -50,9 +60,15 @@ export default function ExplorePage() {
     }
   }
 
-  const requiredParams = (endpoint?.params || []).filter((p) => p.required);
-  const optionalParams = (endpoint?.params || []).filter((p) => !p.required);
-  const canSend = requiredParams.every((p) => paramValues[p.name]?.trim());
+  const searchParam = endpoint?.searchParam;
+  const mainParams = (endpoint?.params || []).filter((p) => p.required);
+  const filterParams = (endpoint?.params || []).filter(
+    (p) => !p.required && p.inputType && p.inputType !== "hidden" && p.inputType !== "chips"
+  );
+  const chipParams = (endpoint?.params || []).filter(
+    (p) => !p.required && p.inputType === "chips"
+  );
+  const canSend = mainParams.every((p) => paramValues[p.name]?.trim());
 
   return (
     <div className="space-y-8">
@@ -65,7 +81,7 @@ export default function ExplorePage() {
       </div>
 
       <div className="flex gap-6">
-        {/* Endpoint Selector */}
+        {/* Endpoint Selector Sidebar */}
         <div className="w-56 flex-shrink-0">
           <div className="bg-surface rounded-[16px] shadow-card overflow-hidden sticky top-8">
             {Object.entries(categories).map(([category, endpoints]) => (
@@ -94,55 +110,99 @@ export default function ExplorePage() {
 
         {/* Main Content */}
         <div className="flex-1 min-w-0 space-y-5">
-          {/* Endpoint Header */}
-          <InfoCard>
-            <div className="flex items-start justify-between">
+          {/* Search Box Card */}
+          <div className="bg-surface rounded-[16px] shadow-card p-5 space-y-4 animate-fade-in-up">
+            {/* Endpoint name + description */}
+            <div className="flex items-center justify-between">
               <div>
-                <div className="flex items-center gap-3">
-                  <h2 className="font-display text-xl font-bold text-text-primary">{endpoint.name}</h2>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-black bg-brand-green/10 text-brand-green">
+                <div className="flex items-center gap-2">
+                  <h2 className="font-display text-lg font-bold text-text-primary">{endpoint.name}</h2>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-black bg-brand-green/10 text-brand-green">
                     {endpoint.method}
                   </span>
                 </div>
-                <code className="text-sm text-text-secondary font-mono mt-1 block" dir="ltr">{endpoint.path}</code>
-                <p className="text-sm text-text-secondary mt-2 font-body">{endpoint.description}</p>
+                <p className="text-xs text-text-secondary mt-0.5 font-body">{endpoint.explanation}</p>
               </div>
-              <div className="text-left text-xs text-text-muted flex-shrink-0 font-mono" dir="ltr">
-                <div>{endpoint.rateLimit}</div>
-                <div className="mt-1">{endpoint.accessLevel}</div>
+              <div className="text-left text-[10px] text-text-muted flex-shrink-0 font-mono" dir="ltr">
+                {endpoint.rateLimit}
               </div>
             </div>
-            {/* Inline explanation */}
-            <p className="text-xs text-text-secondary mt-3 font-body leading-relaxed border-t border-border pt-3">{endpoint.explanation}</p>
-          </InfoCard>
 
-          {/* Parameters */}
-          <InfoCard title="المُدخلات" description="املأ الحقول وأرسل الطلب">
-            <div className="space-y-4">
-              {requiredParams.map((param) => (
-                <ParamInput key={param.name} param={param} value={paramValues[param.name] || ""} onChange={(val) => setParamValues((prev) => ({ ...prev, [param.name]: val }))} />
-              ))}
-
-              {optionalParams.length > 0 && (
-                <button onClick={() => setShowAdvanced(!showAdvanced)} className="text-xs text-link hover:underline font-bold transition-all-fast">
-                  {showAdvanced ? "إخفاء" : "عرض"} الحقول الاختيارية ({optionalParams.length})
+            {/* Main Search Input */}
+            {searchParam && (
+              <div className="relative">
+                <input
+                  type="text"
+                  value={paramValues[searchParam] || ""}
+                  onChange={(e) => setParam(searchParam, e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && canSend && handleSend()}
+                  placeholder={endpoint.searchPlaceholder}
+                  dir="ltr"
+                  className="w-full px-5 py-4 bg-surface-light border-2 border-border rounded-[14px] text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 text-sm font-mono pr-28"
+                />
+                <button
+                  onClick={handleSend}
+                  disabled={loading || !canSend || !token}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 btn-accent text-sm px-5 py-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {loading ? "جارٍ..." : "ابحث"}
                 </button>
-              )}
-
-              {showAdvanced && optionalParams.map((param) => (
-                <ParamInput key={param.name} param={param} value={paramValues[param.name] || ""} onChange={(val) => setParamValues((prev) => ({ ...prev, [param.name]: val }))} />
-              ))}
-
-              <div className="flex items-center gap-3 pt-2">
-                <button onClick={handleSend} disabled={loading || !canSend || !token} className="btn-accent disabled:opacity-40 disabled:cursor-not-allowed">
-                  {loading ? "جارٍ الإرسال..." : "أرسل الطلب"}
-                </button>
-                {!token && <span className="text-xs text-amber font-bold">أضف مفتاح الوصول أولًا</span>}
               </div>
-            </div>
-          </InfoCard>
+            )}
 
-          {/* Result */}
+            {/* No-input endpoint (like /me) */}
+            {!searchParam && (
+              <button
+                onClick={handleSend}
+                disabled={loading || !token}
+                className="btn-accent text-sm px-6 py-3 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {loading ? "جارٍ الإرسال..." : "أرسل الطلب"}
+              </button>
+            )}
+
+            {!token && <p className="text-xs text-amber font-bold">أضف مفتاح الوصول أولًا</p>}
+
+            {/* Filter Row — selects, numbers, dates */}
+            {filterParams.length > 0 && (
+              <div className="flex flex-wrap items-end gap-4 pt-1">
+                {filterParams.map((param) => (
+                  <FilterControl
+                    key={param.name}
+                    param={param}
+                    value={paramValues[param.name] || ""}
+                    onChange={(val) => setParam(param.name, val)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Chip toggles for fields/expansions */}
+            {chipParams.length > 0 && (
+              <>
+                <button
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="text-xs text-link hover:underline font-bold transition-all-fast"
+                >
+                  {showAdvanced ? "إخفاء" : "تخصيص"} الحقول والتوسعات
+                </button>
+                {showAdvanced && (
+                  <div className="space-y-4 pt-1">
+                    {chipParams.map((param) => (
+                      <ChipSelect
+                        key={param.name}
+                        param={param}
+                        value={paramValues[param.name] || ""}
+                        onChange={(val) => setParam(param.name, val)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Results */}
           {result && <ResponseDisplay result={result} endpointKey={selectedEndpoint} />}
         </div>
       </div>
@@ -150,24 +210,129 @@ export default function ExplorePage() {
   );
 }
 
-function ParamInput({ param, value, onChange }) {
+/* ═══════════════ Filter Controls ═══════════════ */
+
+function FilterControl({ param, value, onChange }) {
+  if (param.inputType === "select") return <SelectButtons param={param} value={value} onChange={onChange} />;
+  if (param.inputType === "number") return <NumberPresets param={param} value={value} onChange={onChange} />;
+  if (param.inputType === "date") return <DatePicker param={param} value={value} onChange={onChange} />;
+  return null;
+}
+
+function SelectButtons({ param, value, onChange }) {
   return (
     <div>
-      <label className="flex items-center gap-2 text-sm font-bold text-text-primary mb-1.5">
-        <code className="text-link text-xs bg-brand-blue/10 px-2 py-0.5 rounded-full font-mono">{param.name}</code>
-        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${param.required ? "bg-brand-red/10 text-brand-red" : "bg-surface-lighter text-text-muted"}`}>
-          {param.required ? "مطلوب" : "اختياري"}
-        </span>
-      </label>
-      <input
-        type="text" value={value} onChange={(e) => onChange(e.target.value)}
-        placeholder={param.placeholder || param.default || ""} dir="ltr"
-        className="w-full px-4 py-3 bg-surface-light border border-border rounded-[12px] text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 text-sm font-mono"
-      />
-      {param.description && <p className="text-xs text-text-secondary mt-1 font-body">{param.description}</p>}
+      <label className="text-[11px] font-bold text-text-secondary mb-1.5 block">{param.label}</label>
+      <div className="flex gap-1">
+        {param.choices.map((choice) => (
+          <button
+            key={choice.value}
+            onClick={() => onChange(choice.value)}
+            className={`px-3 py-1.5 text-xs rounded-full font-bold transition-all-fast ${
+              value === choice.value
+                ? "bg-brand-green/15 text-brand-green border border-brand-green/30"
+                : "bg-surface-light text-text-muted hover:text-text-primary border border-transparent"
+            }`}
+          >
+            {choice.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
+
+function NumberPresets({ param, value, onChange }) {
+  return (
+    <div>
+      <label className="text-[11px] font-bold text-text-secondary mb-1.5 block">{param.label}</label>
+      <div className="flex gap-1">
+        {param.presets.map((preset) => (
+          <button
+            key={preset}
+            onClick={() => onChange(preset)}
+            className={`px-3 py-1.5 text-xs rounded-full font-bold font-mono transition-all-fast ${
+              value === preset
+                ? "bg-brand-blue/15 text-brand-blue border border-brand-blue/30"
+                : "bg-surface-light text-text-muted hover:text-text-primary border border-transparent"
+            }`}
+          >
+            {preset}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DatePicker({ param, value, onChange }) {
+  return (
+    <div>
+      <label className="text-[11px] font-bold text-text-secondary mb-1.5 block">{param.label}</label>
+      <input
+        type="datetime-local"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        dir="ltr"
+        className="px-3 py-1.5 bg-surface-light border border-border rounded-[10px] text-xs text-text-primary focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green/20 font-mono"
+      />
+    </div>
+  );
+}
+
+/* ═══════════════ Chip Multi-Select ═══════════════ */
+
+function ChipSelect({ param, value, onChange }) {
+  const allOptions = (param.options || "").split(",").filter(Boolean);
+  const selected = new Set((value || "").split(",").filter(Boolean));
+
+  function toggle(option) {
+    const next = new Set(selected);
+    if (next.has(option)) next.delete(option);
+    else next.add(option);
+    onChange([...next].join(","));
+  }
+
+  function selectAll() {
+    onChange(allOptions.join(","));
+  }
+
+  function selectNone() {
+    onChange("");
+  }
+
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-2">
+        <label className="text-[11px] font-bold text-text-secondary">{param.label}</label>
+        <span className="text-[10px] text-text-muted">{selected.size}/{allOptions.length}</span>
+        <button onClick={selectAll} className="text-[10px] text-link hover:underline font-bold">الكل</button>
+        <button onClick={selectNone} className="text-[10px] text-link hover:underline font-bold">لا شيء</button>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {allOptions.map((option) => {
+          const isOn = selected.has(option);
+          const label = param.chipLabels?.[option] || option;
+          return (
+            <button
+              key={option}
+              onClick={() => toggle(option)}
+              className={`px-2.5 py-1 text-[11px] rounded-full font-bold transition-all-fast ${
+                isOn
+                  ? "bg-brand-green/15 text-brand-green border border-brand-green/30"
+                  : "bg-surface-light text-text-muted hover:text-text-secondary border border-transparent"
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════ Response Display ═══════════════ */
 
 function ResponseDisplay({ result, endpointKey }) {
   const [viewMode, setViewMode] = useState("formatted");
@@ -176,7 +341,6 @@ function ResponseDisplay({ result, endpointKey }) {
 
   return (
     <div className="space-y-4 animate-fade-in-up">
-      {/* Request info */}
       {meta.url && (
         <InfoCard>
           <div className="space-y-2">
@@ -203,7 +367,6 @@ function ResponseDisplay({ result, endpointKey }) {
               : result.data.data ? Array.isArray(result.data.data) ? `${result.data.data.length} عنصر` : "عنصر واحد" : ""
           }
         >
-          {/* View toggle */}
           <div className="flex items-center gap-1 mb-4">
             {Object.entries(viewLabels).map(([mode, label]) => (
               <button key={mode} onClick={() => setViewMode(mode)}
@@ -227,7 +390,6 @@ function ResponseDisplay({ result, endpointKey }) {
             </ExplainerBox>
           )}
 
-          {/* Quick insights */}
           <ResponseConclusion data={result.data} endpointKey={endpointKey} meta={meta} />
         </InfoCard>
       )}
@@ -243,21 +405,17 @@ function ResponseConclusion({ data, endpointKey, meta }) {
 
   const insights = [];
 
-  // Post insights
   if (items[0]?.text !== undefined) {
     const withMetrics = items.filter((p) => p.public_metrics);
     if (withMetrics.length > 0) {
       const totalLikes = withMetrics.reduce((s, p) => s + (p.public_metrics.like_count || 0), 0);
       const totalRTs = withMetrics.reduce((s, p) => s + (p.public_metrics.retweet_count || 0), 0);
-      const avgLikes = Math.round(totalLikes / withMetrics.length);
-      const avgRTs = Math.round(totalRTs / withMetrics.length);
-      insights.push(`متوسط الإعجابات: ${avgLikes.toLocaleString()} — متوسط إعادة التغريد: ${avgRTs.toLocaleString()}`);
+      insights.push(`متوسط الإعجابات: ${Math.round(totalLikes / withMetrics.length).toLocaleString()} — متوسط إعادة التغريد: ${Math.round(totalRTs / withMetrics.length).toLocaleString()}`);
     }
     const langs = [...new Set(items.map((p) => p.lang).filter(Boolean))];
     if (langs.length > 0) insights.push(`اللغات: ${langs.join(", ")}`);
   }
 
-  // User insights
   if (items[0]?.username !== undefined) {
     const withMetrics = items.filter((u) => u.public_metrics);
     if (withMetrics.length > 0) {
