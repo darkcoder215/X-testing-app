@@ -74,8 +74,8 @@ export default function DashboardPage() {
           configured={status.auth.configured}
           configuredLabel="تم الربط"
           notConfiguredLabel="لم يتم الربط بعد"
-          href="/setup"
-          linkLabel="إعداد الحساب"
+          href="/rules"
+          linkLabel="إدارة القواعد"
           color="green"
           delay="delay-1"
         />
@@ -125,9 +125,9 @@ export default function DashboardPage() {
               <Step
                 number={1}
                 title="أضف مفتاح الوصول"
-                description="احصل على Bearer Token من بوابة X للمطورين والصقه في صفحة الإعداد. فكّر فيه كمفتاح يعطيك صلاحية قراءة التغريدات."
+                description="احصل على Bearer Token من بوابة X للمطورين. فكّر فيه كمفتاح يعطيك صلاحية قراءة التغريدات."
                 done={status.auth.configured}
-                href="/setup"
+                href="/rules"
               />
               <Step
                 number={2}

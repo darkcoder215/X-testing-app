@@ -31,7 +31,7 @@ export default function ExplorePage() {
 
   async function handleSend() {
     if (!token) {
-      setResult({ error: "لم تتم إضافة مفتاح الوصول بعد. أضفه في صفحة الإعداد.", code: "AUTH_NOT_CONFIGURED" });
+      setResult({ error: "لم تتم إضافة مفتاح الوصول بعد.", code: "AUTH_NOT_CONFIGURED" });
       return;
     }
     setLoading(true);
@@ -137,7 +137,7 @@ export default function ExplorePage() {
                 <button onClick={handleSend} disabled={loading || !canSend || !token} className="btn-accent disabled:opacity-40 disabled:cursor-not-allowed">
                   {loading ? "جارٍ الإرسال..." : "أرسل الطلب"}
                 </button>
-                {!token && <span className="text-xs text-amber font-bold">أضف مفتاح الوصول أولًا في صفحة الإعداد</span>}
+                {!token && <span className="text-xs text-amber font-bold">أضف مفتاح الوصول أولًا</span>}
               </div>
             </div>
           </InfoCard>

@@ -17,7 +17,7 @@ export default function RulesPage() {
   const fetchRules = useCallback(async () => {
     if (!token) {
       setLoading(false);
-      setError({ error: "لم تتم إضافة مفتاح الوصول بعد.", code: "AUTH_NOT_CONFIGURED", hint: "أضف المفتاح في صفحة الإعداد." });
+      setError({ error: "لم تتم إضافة مفتاح الوصول بعد.", code: "AUTH_NOT_CONFIGURED" });
       return;
     }
     try {

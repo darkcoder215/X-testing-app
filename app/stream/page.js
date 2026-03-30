@@ -111,7 +111,7 @@ export default function StreamPage() {
 
   async function handleStart() {
     if (!token) {
-      setError({ message: "لم تتم إضافة مفتاح الوصول. أضفه في صفحة الإعداد.", code: "AUTH_NOT_CONFIGURED" });
+      setError({ message: "لم تتم إضافة مفتاح الوصول.", code: "AUTH_NOT_CONFIGURED" });
       return;
     }
     setConnecting(true);
@@ -227,7 +227,7 @@ export default function StreamPage() {
         <ErrorDisplay
           error={error.message}
           code={error.code}
-          hint={error.code === "AUTH_NOT_CONFIGURED" ? "أضف مفتاح الوصول في صفحة الإعداد." : undefined}
+          hint={error.code === "AUTH_NOT_CONFIGURED" ? "أضف مفتاح الوصول." : undefined}
           onRetry={handleStart}
         />
       )}
