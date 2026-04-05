@@ -4,9 +4,19 @@ import { useState, useRef, useCallback } from "react";
 import { useAuth } from "../components/AuthProvider";
 import InfoCard, { StatusBadge, ErrorDisplay } from "../components/InfoCard";
 
-// X API pricing (per tweet read)
-const COST_PER_TWEET_BASIC = 0.02; // $200 / 10,000
-const COST_PER_TWEET_PRO = 0.005; // $5,000 / 1,000,000
+// Official X API pay-per-use pricing
+const PRICING = {
+  "posts_read":       { cost: 0.005, unit: "تغريدة",  label: "قراءة تغريدات" },
+  "user_read":        { cost: 0.010, unit: "حساب",   label: "قراءة حسابات" },
+  "followers_read":   { cost: 0.010, unit: "متابع",  label: "قراءة متابعين" },
+  "counts_recent":    { cost: 0.005, unit: "طلب",    label: "عدد التغريدات (أخير)" },
+  "counts_all":       { cost: 0.010, unit: "طلب",    label: "عدد التغريدات (كامل)" },
+  "dm_read":          { cost: 0.010, unit: "رسالة",  label: "قراءة رسائل" },
+  "content_create":   { cost: 0.010, unit: "طلب",    label: "إنشاء محتوى" },
+  "dm_create":        { cost: 0.015, unit: "طلب",    label: "إنشاء رسالة" },
+  "user_interaction":  { cost: 0.015, unit: "طلب",    label: "تفاعل (متابعة/إعجاب)" },
+};
+const COST_PER_TWEET = PRICING.posts_read.cost; // $0.005
 
 export default function ExtractorPage() {
   const { token, apiFetch } = useAuth();
@@ -29,11 +39,14 @@ export default function ExtractorPage() {
 
   const canStart = query.trim() && token && !extracting;
 
-  // Cost calculator
-  const estimatedCost = {
-    basic: (maxTweets * COST_PER_TWEET_BASIC).toFixed(2),
-    pro: (maxTweets * COST_PER_TWEET_PRO).toFixed(3),
-  };
+  // Cost calculator — official pay-per-use pricing
+  const tweetCost = (maxTweets * COST_PER_TWEET).toFixed(2);
+  // Each page also fetches author expansions (user reads)
+  const estimatedPages = Math.ceil(maxTweets / 100);
+  // Rough estimate: ~unique authors per 100 tweets ≈ 80
+  const estimatedUserReads = Math.min(maxTweets, estimatedPages * 80);
+  const userCost = (estimatedUserReads * PRICING.user_read.cost).toFixed(2);
+  const totalCost = (parseFloat(tweetCost) + parseFloat(userCost)).toFixed(2);
 
   const startExtraction = useCallback(async () => {
     if (!canStart) return;
@@ -391,19 +404,44 @@ export default function ExtractorPage() {
               />
             </div>
 
-            {/* Cost breakdown */}
-            <div className="space-y-3">
-              <div className="p-3 bg-surface-light rounded-[12px]">
-                <p className="text-[10px] text-text-muted font-bold">الباقة الأساسية ($200/شهر)</p>
-                <p className="font-display text-xl font-black mt-1">${estimatedCost.basic}</p>
-                <p className="text-[10px] text-text-muted mt-1">${COST_PER_TWEET_BASIC} / تغريدة</p>
-                <p className="text-[10px] text-text-muted">10,000 تغريدة / شهر</p>
+            {/* Total estimate */}
+            <div className="p-4 bg-brand-black rounded-[12px] text-white">
+              <p className="text-[10px] font-bold opacity-70">التكلفة التقديرية</p>
+              <p className="font-display text-2xl font-black mt-1">${totalCost}</p>
+              <p className="text-[10px] opacity-60 mt-1">لـ {maxTweets.toLocaleString()} تغريدة</p>
+            </div>
+
+            {/* Breakdown */}
+            <div className="space-y-2">
+              <p className="text-[11px] font-bold text-text-secondary">التفاصيل</p>
+              <div className="p-3 bg-surface-light rounded-[12px] space-y-2">
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-text-secondary">قراءة تغريدات</span>
+                  <span className="font-mono font-bold">${tweetCost}</span>
+                </div>
+                <div className="flex justify-between text-[10px] text-text-muted">
+                  <span>{maxTweets.toLocaleString()} x ${COST_PER_TWEET}</span>
+                </div>
+                <div className="border-t border-border pt-2 flex justify-between text-[11px]">
+                  <span className="text-text-secondary">قراءة حسابات (توسعات)</span>
+                  <span className="font-mono font-bold">${userCost}</span>
+                </div>
+                <div className="flex justify-between text-[10px] text-text-muted">
+                  <span>~{estimatedUserReads.toLocaleString()} x ${PRICING.user_read.cost}</span>
+                </div>
               </div>
-              <div className="p-3 bg-surface-light rounded-[12px]">
-                <p className="text-[10px] text-text-muted font-bold">الباقة الاحترافية ($5,000/شهر)</p>
-                <p className="font-display text-xl font-black mt-1">${estimatedCost.pro}</p>
-                <p className="text-[10px] text-text-muted mt-1">${COST_PER_TWEET_PRO} / تغريدة</p>
-                <p className="text-[10px] text-text-muted">1,000,000 تغريدة / شهر</p>
+            </div>
+
+            {/* Official pricing table */}
+            <div>
+              <p className="text-[11px] font-bold text-text-secondary mb-2">أسعار X API الرسمية</p>
+              <div className="space-y-1">
+                {Object.values(PRICING).map((p) => (
+                  <div key={p.label} className="flex justify-between text-[10px] py-1 border-b border-border last:border-0">
+                    <span className="text-text-muted">{p.label}</span>
+                    <span className="font-mono text-text-primary font-bold">${p.cost}/{p.unit}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
