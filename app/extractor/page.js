@@ -40,13 +40,8 @@ export default function ExtractorPage() {
   const canStart = query.trim() && token && !extracting;
 
   // Cost calculator — official pay-per-use pricing
-  const tweetCost = (maxTweets * COST_PER_TWEET).toFixed(2);
-  // Each page also fetches author expansions (user reads)
-  const estimatedPages = Math.ceil(maxTweets / 100);
-  // Rough estimate: ~unique authors per 100 tweets ≈ 80
-  const estimatedUserReads = Math.min(maxTweets, estimatedPages * 80);
-  const userCost = (estimatedUserReads * PRICING.user_read.cost).toFixed(2);
-  const totalCost = (parseFloat(tweetCost) + parseFloat(userCost)).toFixed(2);
+  // Tweet reads at $0.005 each (expansions included in this cost)
+  const totalCost = (maxTweets * COST_PER_TWEET).toFixed(2);
 
   const startExtraction = useCallback(async () => {
     if (!canStart) return;
@@ -412,24 +407,15 @@ export default function ExtractorPage() {
             </div>
 
             {/* Breakdown */}
-            <div className="space-y-2">
-              <p className="text-[11px] font-bold text-text-secondary">التفاصيل</p>
-              <div className="p-3 bg-surface-light rounded-[12px] space-y-2">
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-text-secondary">قراءة تغريدات</span>
-                  <span className="font-mono font-bold">${tweetCost}</span>
-                </div>
-                <div className="flex justify-between text-[10px] text-text-muted">
-                  <span>{maxTweets.toLocaleString()} x ${COST_PER_TWEET}</span>
-                </div>
-                <div className="border-t border-border pt-2 flex justify-between text-[11px]">
-                  <span className="text-text-secondary">قراءة حسابات (توسعات)</span>
-                  <span className="font-mono font-bold">${userCost}</span>
-                </div>
-                <div className="flex justify-between text-[10px] text-text-muted">
-                  <span>~{estimatedUserReads.toLocaleString()} x ${PRICING.user_read.cost}</span>
-                </div>
+            <div className="p-3 bg-surface-light rounded-[12px] space-y-1">
+              <div className="flex justify-between text-[11px]">
+                <span className="text-text-secondary">قراءة تغريدات</span>
+                <span className="font-mono font-bold">${totalCost}</span>
               </div>
+              <div className="text-[10px] text-text-muted">
+                {maxTweets.toLocaleString()} تغريدة x ${COST_PER_TWEET}
+              </div>
+              <p className="text-[10px] text-text-muted pt-1 border-t border-border mt-1">التوسعات (الكاتب، الوسائط) مشمولة بتكلفة القراءة</p>
             </div>
 
             {/* Official pricing table */}
