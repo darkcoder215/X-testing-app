@@ -74,16 +74,37 @@ export default function ExplorePage() {
     <div className="space-y-8">
       {/* Header */}
       <div className="animate-fade-in-up">
-        <h1 className="font-display text-4xl font-black text-text-primary">استكشاف</h1>
+        <h1 className="font-display text-2xl md:text-4xl font-black text-text-primary">استكشاف</h1>
         <p className="font-body text-text-secondary mt-2 text-base">
           جرّب واجهات X البرمجية وشوف النتائج مباشرة
         </p>
       </div>
 
-      <div className="flex gap-6">
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* Endpoint Selector Sidebar */}
-        <div className="w-56 flex-shrink-0">
-          <div className="bg-surface rounded-[16px] shadow-card overflow-hidden sticky top-8">
+        <div className="w-full lg:w-56 flex-shrink-0">
+          {/* Mobile: horizontal scrollable chips */}
+          <div className="lg:hidden bg-surface rounded-[16px] shadow-card p-3 overflow-x-auto">
+            <div className="flex gap-2 min-w-max">
+              {Object.entries(categories).map(([category, endpoints]) =>
+                endpoints.map((ep) => (
+                  <button
+                    key={ep.key}
+                    onClick={() => setSelectedEndpoint(ep.key)}
+                    className={`flex-shrink-0 px-3 py-2 text-xs rounded-full font-bold transition-all-fast whitespace-nowrap ${
+                      selectedEndpoint === ep.key
+                        ? "bg-brand-black text-white"
+                        : "bg-surface-light text-text-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    {ep.name}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+          {/* Desktop: vertical list */}
+          <div className="hidden lg:block bg-surface rounded-[16px] shadow-card overflow-hidden lg:sticky lg:top-8">
             {Object.entries(categories).map(([category, endpoints]) => (
               <div key={category}>
                 <div className="px-4 py-2.5 bg-brand-black text-xs font-black text-white tracking-wider">
@@ -111,7 +132,7 @@ export default function ExplorePage() {
         {/* Main Content */}
         <div className="flex-1 min-w-0 space-y-5">
           {/* Search Box Card */}
-          <div className="bg-surface rounded-[16px] shadow-card p-5 space-y-4 animate-fade-in-up">
+          <div className="bg-surface rounded-[16px] shadow-card p-4 md:p-5 space-y-4 animate-fade-in-up">
             {/* Endpoint name + description */}
             <div className="flex items-center justify-between">
               <div>

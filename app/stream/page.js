@@ -142,9 +142,9 @@ export default function StreamPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between animate-fade-in-up">
+      <div className="flex flex-col sm:flex-row items-start sm:justify-between gap-4 animate-fade-in-up">
         <div>
-          <h1 className="font-display text-4xl font-black text-text-primary flex items-center gap-3">
+          <h1 className="font-display text-2xl md:text-4xl font-black text-text-primary flex items-center gap-3">
             البث المباشر
             {connected && <span className="w-3 h-3 rounded-full bg-brand-green animate-pulse-dot" />}
           </h1>

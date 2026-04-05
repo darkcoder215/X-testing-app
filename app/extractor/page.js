@@ -203,17 +203,17 @@ export default function ExtractorPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="animate-fade-in-up">
-        <h1 className="font-display text-4xl font-black text-text-primary">استخراج البيانات</h1>
+        <h1 className="font-display text-2xl md:text-4xl font-black text-text-primary">استخراج البيانات</h1>
         <p className="font-body text-text-secondary mt-2 text-base">
           ابحث في تغريدات X واستخرجها كملف CSV مع جميع البيانات
         </p>
       </div>
 
-      <div className="flex gap-6">
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* Main Panel */}
         <div className="flex-1 min-w-0 space-y-5">
           {/* Search Box */}
-          <div className="bg-surface rounded-[16px] shadow-card p-5 space-y-4">
+          <div className="bg-surface rounded-[16px] shadow-card p-4 md:p-5 space-y-4">
             <div className="relative">
               <input
                 type="text"
@@ -291,7 +291,7 @@ export default function ExtractorPage() {
             </div>
 
             {/* Action buttons */}
-            <div className="flex items-center gap-3 pt-1">
+            <div className="flex flex-wrap items-center gap-3 pt-1">
               {!extracting ? (
                 <button
                   onClick={startExtraction}
@@ -363,9 +363,9 @@ export default function ExtractorPage() {
                     : `https://x.com/i/status/${t.id}`;
                   return (
                     <div key={t.id} className="py-3">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
                         {author?.profile_image_url && <img src={author.profile_image_url} alt="" className="w-6 h-6 rounded-full" />}
-                        <span className="text-xs font-bold text-text-primary">{author?.name}</span>
+                        <span className="text-xs font-bold text-text-primary truncate max-w-[120px] sm:max-w-none">{author?.name}</span>
                         {author?.username && (
                           <a
                             href={`https://x.com/${author.username}`}
@@ -377,10 +377,10 @@ export default function ExtractorPage() {
                             @{author.username}
                           </a>
                         )}
-                        <span className="text-[10px] text-text-muted mr-auto">{t.created_at ? new Date(t.created_at).toLocaleString("ar-SA") : ""}</span>
+                        <span className="text-[10px] text-text-muted mr-auto hidden sm:inline">{t.created_at ? new Date(t.created_at).toLocaleString("ar-SA") : ""}</span>
                       </div>
                       <p className="text-xs text-text-primary font-body line-clamp-3">{t.text}</p>
-                      <div className="flex items-center gap-4 mt-1.5">
+                      <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-1.5">
                         {t.public_metrics && (
                           <div className="flex gap-4 text-[10px] text-text-muted">
                             <span>{"\u2665"} {t.public_metrics.like_count?.toLocaleString()}</span>
@@ -412,8 +412,8 @@ export default function ExtractorPage() {
         </div>
 
         {/* Cost Calculator Sidebar */}
-        <div className="w-64 flex-shrink-0">
-          <div className="bg-surface rounded-[16px] shadow-card p-5 sticky top-8 space-y-5">
+        <div className="w-full lg:w-64 flex-shrink-0">
+          <div className="bg-surface rounded-[16px] shadow-card p-4 md:p-5 lg:sticky lg:top-8 space-y-5">
             <h3 className="font-display text-sm font-black text-text-primary">حاسبة التكلفة</h3>
 
             {/* Quick calculator */}
@@ -618,15 +618,15 @@ function SearchOperatorsGuide() {
       </button>
 
       {open && (
-        <div className="px-5 pb-5 space-y-5 border-t border-border">
+        <div className="px-4 md:px-5 pb-5 space-y-5 border-t border-border">
           {/* Quick examples */}
           <div className="mt-4">
             <h4 className="text-xs font-bold text-text-primary mb-2">أمثلة جاهزة</h4>
             <div className="space-y-2">
               {examples.map((ex, i) => (
-                <div key={i} className="flex items-center gap-2 group">
+                <div key={i} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 group">
                   <span className="text-[10px] text-text-secondary flex-shrink-0">{ex.label}:</span>
-                  <code className="text-[11px] font-mono bg-surface-light px-2 py-1 rounded-lg text-text-primary flex-1" dir="ltr">{ex.query}</code>
+                  <code className="text-[11px] font-mono bg-surface-light px-2 py-1 rounded-lg text-text-primary overflow-x-auto" dir="ltr">{ex.query}</code>
                 </div>
               ))}
             </div>
@@ -636,12 +636,12 @@ function SearchOperatorsGuide() {
           {sections.map((section) => (
             <div key={section.title}>
               <h4 className="text-xs font-bold text-text-primary mb-2 border-b border-border pb-1">{section.title}</h4>
-              <div className="space-y-1.5">
+              <div className="space-y-2 md:space-y-1.5">
                 {section.items.map((item) => (
-                  <div key={item.op} className="grid grid-cols-[110px_1fr_1fr] gap-2 items-start text-[11px]">
+                  <div key={item.op} className="flex flex-col md:grid md:grid-cols-[110px_1fr_1fr] gap-0.5 md:gap-2 items-start text-[11px]">
                     <code className="font-mono bg-surface-light px-1.5 py-0.5 rounded text-text-primary font-bold text-[10px]" dir="ltr">{item.op}</code>
                     <span className="text-text-secondary">{item.desc}</span>
-                    <code className="font-mono text-text-muted text-[10px]" dir="ltr">{item.ex}</code>
+                    <code className="font-mono text-text-muted text-[10px] hidden md:block" dir="ltr">{item.ex}</code>
                   </div>
                 ))}
               </div>
@@ -665,7 +665,7 @@ function SearchOperatorsGuide() {
             <h4 className="text-xs font-bold text-text-primary mb-2">الحقول الاختيارية</h4>
             <div className="space-y-1.5 text-[11px] text-text-secondary">
               <p>يتم تلقائيًا طلب جميع الحقول المتاحة مع كل استخراج:</p>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1 text-[10px] text-text-muted">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 mt-1 text-[10px] text-text-muted">
                 <span>• النص الكامل والتاريخ</span>
                 <span>• اللغة والمصدر</span>
                 <span>• بيانات الكاتب (الاسم، المعرّف)</span>

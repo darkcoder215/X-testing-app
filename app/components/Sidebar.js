@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -26,55 +27,106 @@ const NAV_ITEMS = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <aside className="fixed right-0 top-0 bottom-0 w-[260px] bg-dark-slate flex flex-col z-50">
-      {/* Logo */}
-      <div className="p-6 border-b border-charcoal">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0">
-            <span className="text-black font-black text-sm">X</span>
+    <>
+      {/* Mobile top bar */}
+      <div className="md:hidden fixed top-0 right-0 left-0 h-14 bg-dark-slate flex items-center justify-between px-4 z-50">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+            <span className="text-black font-black text-xs">X</span>
           </div>
-          <div>
-            <h1 className="font-display text-lg font-bold text-text-on-dark">محلل التغريدات</h1>
-            <p className="text-xs text-muted mt-0.5">by Yaman.io</p>
+          <span className="font-display text-sm font-bold text-text-on-dark">محلل التغريدات</span>
+        </div>
+        <button
+          onClick={() => setMobileOpen(!mobileOpen)}
+          className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-charcoal/50 text-text-on-dark"
+          aria-label="القائمة"
+        >
+          {mobileOpen ? (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          )}
+        </button>
+      </div>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/40 z-40"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Sidebar — desktop: fixed, mobile: slide-in overlay */}
+      <aside
+        className={`
+          fixed top-0 bottom-0 w-[260px] bg-dark-slate flex flex-col z-50
+          transition-transform duration-300 ease-out
+          right-0
+          md:translate-x-0
+          ${mobileOpen ? "translate-x-0" : "translate-x-full md:translate-x-0"}
+          md:top-0
+          top-14
+        `}
+      >
+        {/* Logo — desktop only */}
+        <div className="hidden md:block p-6 border-b border-charcoal">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+              <span className="text-black font-black text-sm">X</span>
+            </div>
+            <div>
+              <h1 className="font-display text-lg font-bold text-text-on-dark">محلل التغريدات</h1>
+              <p className="text-xs text-muted mt-0.5">by Yaman.io</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 py-4 overflow-y-auto">
-        {NAV_ITEMS.map((item) => {
-          const isActive = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-6 py-3.5 text-sm transition-all-fast ${
-                isActive
-                  ? "bg-white/10 text-white border-r-[3px] border-white"
-                  : "text-muted hover:text-text-on-dark hover:bg-charcoal/50 border-r-[3px] border-transparent"
-              }`}
-            >
-              <item.icon active={isActive} />
-              <div>
-                <div className={`font-bold text-[13px] ${isActive ? "text-white" : ""}`}>
-                  {item.label}
+        {/* Navigation */}
+        <nav className="flex-1 py-4 overflow-y-auto">
+          {NAV_ITEMS.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setMobileOpen(false)}
+                className={`flex items-center gap-3 px-6 py-3.5 text-sm transition-all-fast ${
+                  isActive
+                    ? "bg-white/10 text-white border-r-[3px] border-white"
+                    : "text-muted hover:text-text-on-dark hover:bg-charcoal/50 border-r-[3px] border-transparent"
+                }`}
+              >
+                <item.icon active={isActive} />
+                <div>
+                  <div className={`font-bold text-[13px] ${isActive ? "text-white" : ""}`}>
+                    {item.label}
+                  </div>
+                  <div className="text-[11px] text-muted/70">{item.description}</div>
                 </div>
-                <div className="text-[11px] text-muted/70">{item.description}</div>
-              </div>
-            </Link>
-          );
-        })}
-      </nav>
+              </Link>
+            );
+          })}
+        </nav>
 
-      {/* Footer */}
-      <div className="p-4 border-t border-charcoal">
-        <p className="text-[11px] text-muted text-center">
-          X API v2 — by Yaman.io
-        </p>
-      </div>
-    </aside>
+        {/* Footer */}
+        <div className="p-4 border-t border-charcoal">
+          <p className="text-[11px] text-muted text-center">
+            X API v2 — by Yaman.io
+          </p>
+        </div>
+      </aside>
+    </>
   );
 }
 

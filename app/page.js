@@ -26,7 +26,7 @@ export default function LandingPage() {
         </div>
 
         <h1
-          className={`font-display text-5xl md:text-6xl font-black text-text-primary leading-tight transition-all duration-700 delay-100 ${
+          className={`font-display text-3xl sm:text-5xl md:text-6xl font-black text-text-primary leading-tight transition-all duration-700 delay-100 ${
             mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
           }`}
         >
@@ -57,7 +57,7 @@ export default function LandingPage() {
         </h1>
 
         <p
-          className={`font-body text-text-secondary text-lg mt-6 leading-relaxed max-w-lg mx-auto transition-all duration-700 delay-200 ${
+          className={`font-body text-text-secondary text-base md:text-lg mt-6 leading-relaxed max-w-lg mx-auto px-2 transition-all duration-700 delay-200 ${
             mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
           }`}
         >
@@ -171,7 +171,7 @@ export default function LandingPage() {
    ═══════════════════════════════════════════════════════ */
 function FloatingShapes() {
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+    <div className="absolute inset-0 pointer-events-none overflow-hidden hidden md:block">
       {/* Circles */}
       <div
         className="absolute w-64 h-64 rounded-full border border-border/50 animate-float"
