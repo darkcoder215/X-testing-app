@@ -222,7 +222,7 @@ export default function ExtractorPage() {
                 onKeyDown={(e) => e.key === "Enter" && canStart && startExtraction()}
                 placeholder='ابحث... (مثال: #AI lang:en -is:retweet)'
                 dir="ltr"
-                className="w-full px-5 py-4 bg-surface-light border-2 border-border rounded-[14px] text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-black focus:ring-2 focus:ring-brand-black/10 text-sm font-mono"
+                className="w-full px-5 py-4 bg-surface-light border-2 border-border rounded-[14px] text-text-primary focus:outline-none focus:border-brand-black focus:ring-2 focus:ring-brand-black/10 text-sm font-mono text-left placeholder:text-right placeholder:text-text-muted"
               />
             </div>
 
@@ -314,6 +314,9 @@ export default function ExtractorPage() {
             </div>
           </div>
 
+          {/* Search Operators Guide */}
+          <SearchOperatorsGuide />
+
           {/* Progress */}
           {(extracting || done) && (
             <div className="bg-surface rounded-[16px] shadow-card p-5 space-y-3 animate-fade-in-up">
@@ -355,22 +358,48 @@ export default function ExtractorPage() {
               <div className="divide-y divide-border">
                 {tweets.slice(-5).reverse().map((t) => {
                   const author = includes.users.find((u) => u.id === t.author_id);
+                  const tweetUrl = author?.username
+                    ? `https://x.com/${author.username}/status/${t.id}`
+                    : `https://x.com/i/status/${t.id}`;
                   return (
                     <div key={t.id} className="py-3">
                       <div className="flex items-center gap-2 mb-1">
                         {author?.profile_image_url && <img src={author.profile_image_url} alt="" className="w-6 h-6 rounded-full" />}
                         <span className="text-xs font-bold text-text-primary">{author?.name}</span>
-                        <span className="text-[10px] text-text-muted" dir="ltr">@{author?.username}</span>
+                        {author?.username && (
+                          <a
+                            href={`https://x.com/${author.username}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-text-muted hover:text-text-primary hover:underline"
+                            dir="ltr"
+                          >
+                            @{author.username}
+                          </a>
+                        )}
                         <span className="text-[10px] text-text-muted mr-auto">{t.created_at ? new Date(t.created_at).toLocaleString("ar-SA") : ""}</span>
                       </div>
-                      <p className="text-xs text-text-primary font-body line-clamp-2">{t.text}</p>
-                      {t.public_metrics && (
-                        <div className="flex gap-4 mt-1 text-[10px] text-text-muted">
-                          <span>{"\u2665"} {t.public_metrics.like_count?.toLocaleString()}</span>
-                          <span>{"\u21bb"} {t.public_metrics.retweet_count?.toLocaleString()}</span>
-                          <span>&#128172; {t.public_metrics.reply_count?.toLocaleString()}</span>
-                        </div>
-                      )}
+                      <p className="text-xs text-text-primary font-body line-clamp-3">{t.text}</p>
+                      <div className="flex items-center gap-4 mt-1.5">
+                        {t.public_metrics && (
+                          <div className="flex gap-4 text-[10px] text-text-muted">
+                            <span>{"\u2665"} {t.public_metrics.like_count?.toLocaleString()}</span>
+                            <span>{"\u21bb"} {t.public_metrics.retweet_count?.toLocaleString()}</span>
+                            <span>&#128172; {t.public_metrics.reply_count?.toLocaleString()}</span>
+                            {t.public_metrics.impression_count > 0 && (
+                              <span>&#128065; {t.public_metrics.impression_count?.toLocaleString()}</span>
+                            )}
+                          </div>
+                        )}
+                        <a
+                          href={tweetUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] font-bold text-link hover:underline mr-auto"
+                        >
+                          فتح في X &larr;
+                        </a>
+                      </div>
                     </div>
                   );
                 })}
@@ -486,6 +515,189 @@ function dedupeByKey(arr) {
     seen.add(key);
     return true;
   });
+}
+
+function SearchOperatorsGuide() {
+  const [open, setOpen] = useState(false);
+
+  const sections = [
+    {
+      title: "الكلمات والعبارات",
+      items: [
+        { op: "كلمة", desc: "البحث عن كلمة واحدة", ex: "الذكاء" },
+        { op: '"عبارة كاملة"', desc: "البحث عن عبارة بالترتيب", ex: '"الذكاء الاصطناعي"' },
+        { op: "كلمة1 كلمة2", desc: "تغريدات تحتوي كلتا الكلمتين (AND)", ex: "تقنية ذكاء" },
+        { op: "كلمة1 OR كلمة2", desc: "تغريدات تحتوي إحدى الكلمتين", ex: "AI OR ذكاء" },
+        { op: "-كلمة", desc: "استبعاد تغريدات تحتوي هذه الكلمة", ex: "ذكاء -اصطناعي" },
+      ],
+    },
+    {
+      title: "الحسابات والمستخدمين",
+      items: [
+        { op: "from:username", desc: "تغريدات من حساب محدد", ex: "from:elaboratapp" },
+        { op: "to:username", desc: "ردود موجهة لحساب", ex: "to:elonmusk" },
+        { op: "@username", desc: "تغريدات تذكر حسابًا", ex: "@OpenAI" },
+        { op: "retweets_of:username", desc: "ريتويتات لتغريدات حساب", ex: "retweets_of:NASA" },
+      ],
+    },
+    {
+      title: "نوع التغريدة",
+      items: [
+        { op: "is:retweet", desc: "ريتويتات فقط", ex: "AI is:retweet" },
+        { op: "-is:retweet", desc: "استبعاد الريتويتات", ex: "AI -is:retweet" },
+        { op: "is:reply", desc: "ردود فقط", ex: "تقنية is:reply" },
+        { op: "-is:reply", desc: "استبعاد الردود", ex: "تقنية -is:reply" },
+        { op: "is:quote", desc: "اقتباسات فقط", ex: "تقنية is:quote" },
+        { op: "is:verified", desc: "من حسابات موثقة فقط", ex: "is:verified AI" },
+      ],
+    },
+    {
+      title: "المحتوى والوسائط",
+      items: [
+        { op: "has:media", desc: "تغريدات تحتوي وسائط (صور/فيديو)", ex: "تقنية has:media" },
+        { op: "has:images", desc: "تحتوي صورًا فقط", ex: "تصميم has:images" },
+        { op: "has:video_link", desc: "تحتوي فيديو", ex: "شرح has:video_link" },
+        { op: "has:links", desc: "تحتوي روابط", ex: "تقنية has:links" },
+        { op: "has:hashtags", desc: "تحتوي هاشتاقات", ex: "تقنية has:hashtags" },
+        { op: "has:mentions", desc: "تحتوي إشارات لحسابات", ex: "تقنية has:mentions" },
+        { op: "has:geo", desc: "تحتوي موقع جغرافي", ex: "has:geo lang:ar" },
+        { op: "url:\"domain\"", desc: "تحتوي رابطًا لموقع", ex: 'url:"youtube.com"' },
+      ],
+    },
+    {
+      title: "اللغة والموقع",
+      items: [
+        { op: "lang:xx", desc: "تغريدات بلغة محددة (رمز ISO)", ex: "lang:ar" },
+        { op: "place:name", desc: "تغريدات من مكان محدد", ex: "place:Riyadh" },
+        { op: "place_country:XX", desc: "تغريدات من دولة (رمز ISO)", ex: "place_country:SA" },
+        { op: "point_radius:[lon lat radius]", desc: "تغريدات ضمن نطاق جغرافي", ex: "point_radius:[46.7 24.7 25km]" },
+        { op: "bounding_box:[W S E N]", desc: "تغريدات ضمن مستطيل جغرافي", ex: "bounding_box:[46.5 24.5 47.0 25.0]" },
+      ],
+    },
+    {
+      title: "التفاعل والإحصائيات",
+      items: [
+        { op: "conversation_id:ID", desc: "جميع ردود محادثة معينة", ex: "conversation_id:1234567890" },
+        { op: "context:domain.entity", desc: "سياق الموضوع (أخبار، رياضة...)", ex: "context:35.67890" },
+        { op: "entity:\"name\"", desc: "تغريدات تذكر كيانًا محددًا", ex: 'entity:"Bitcoin"' },
+      ],
+    },
+    {
+      title: "الهاشتاقات والكاشتاقات",
+      items: [
+        { op: "#هاشتاق", desc: "تغريدات بهاشتاق محدد", ex: "#الذكاء_الاصطناعي" },
+        { op: "$SYMBOL", desc: "تغريدات تذكر رمز سهم", ex: "$AAPL" },
+      ],
+    },
+  ];
+
+  const examples = [
+    { label: "تغريدات عربية عن الذكاء الاصطناعي بدون ريتويت", query: 'الذكاء الاصطناعي lang:ar -is:retweet' },
+    { label: "تغريدات من حساب مع صور فقط", query: 'from:elaboratapp has:images -is:retweet' },
+    { label: "عدة كلمات مفتاحية", query: '(AI OR "machine learning" OR ذكاء) lang:ar -is:retweet' },
+    { label: "ردود محادثة بعينها", query: 'conversation_id:1234567890' },
+    { label: "تغريدات موثقة مع روابط", query: 'تقنية is:verified has:links lang:ar' },
+  ];
+
+  return (
+    <div className="bg-surface rounded-[16px] shadow-card overflow-hidden animate-fade-in-up">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-surface-light/50 transition-all-fast"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-base">📖</span>
+          <div className="text-right">
+            <h3 className="font-bold text-sm text-text-primary">دليل عوامل البحث</h3>
+            <p className="text-[11px] text-text-muted mt-0.5">تعرّف على كيفية هيكلة استعلامات البحث واستخراج بيانات متعددة</p>
+          </div>
+        </div>
+        <span className={`text-text-muted transition-transform duration-200 ${open ? "rotate-180" : ""}`}>
+          &#9660;
+        </span>
+      </button>
+
+      {open && (
+        <div className="px-5 pb-5 space-y-5 border-t border-border">
+          {/* Quick examples */}
+          <div className="mt-4">
+            <h4 className="text-xs font-bold text-text-primary mb-2">أمثلة جاهزة</h4>
+            <div className="space-y-2">
+              {examples.map((ex, i) => (
+                <div key={i} className="flex items-center gap-2 group">
+                  <span className="text-[10px] text-text-secondary flex-shrink-0">{ex.label}:</span>
+                  <code className="text-[11px] font-mono bg-surface-light px-2 py-1 rounded-lg text-text-primary flex-1" dir="ltr">{ex.query}</code>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Operator sections */}
+          {sections.map((section) => (
+            <div key={section.title}>
+              <h4 className="text-xs font-bold text-text-primary mb-2 border-b border-border pb-1">{section.title}</h4>
+              <div className="space-y-1.5">
+                {section.items.map((item) => (
+                  <div key={item.op} className="grid grid-cols-[110px_1fr_1fr] gap-2 items-start text-[11px]">
+                    <code className="font-mono bg-surface-light px-1.5 py-0.5 rounded text-text-primary font-bold text-[10px]" dir="ltr">{item.op}</code>
+                    <span className="text-text-secondary">{item.desc}</span>
+                    <code className="font-mono text-text-muted text-[10px]" dir="ltr">{item.ex}</code>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {/* Combining operators */}
+          <div className="p-3 bg-surface-light rounded-[12px]">
+            <h4 className="text-xs font-bold text-text-primary mb-2">دمج العوامل</h4>
+            <div className="space-y-2 text-[11px] text-text-secondary">
+              <p>يمكنك دمج أي عدد من العوامل في استعلام واحد. استخدم <code className="font-mono bg-white px-1 rounded" dir="ltr">OR</code> للبحث عن بدائل، و <code className="font-mono bg-white px-1 rounded" dir="ltr">( )</code> لتجميع الشروط.</p>
+              <p>لاستخراج كلمات مفتاحية متعددة في وقت واحد، اجمعها بـ <code className="font-mono bg-white px-1 rounded" dir="ltr">OR</code>:</p>
+              <code className="block font-mono bg-white px-3 py-2 rounded-lg text-text-primary text-[10px]" dir="ltr">(كلمة1 OR كلمة2 OR كلمة3) lang:ar -is:retweet</code>
+              <p>لاستبعاد عدة أشياء:</p>
+              <code className="block font-mono bg-white px-3 py-2 rounded-lg text-text-primary text-[10px]" dir="ltr">تقنية -is:retweet -is:reply -has:links</code>
+            </div>
+          </div>
+
+          {/* Optional fields note */}
+          <div className="p-3 bg-surface-light rounded-[12px]">
+            <h4 className="text-xs font-bold text-text-primary mb-2">الحقول الاختيارية</h4>
+            <div className="space-y-1.5 text-[11px] text-text-secondary">
+              <p>يتم تلقائيًا طلب جميع الحقول المتاحة مع كل استخراج:</p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1 text-[10px] text-text-muted">
+                <span>• النص الكامل والتاريخ</span>
+                <span>• اللغة والمصدر</span>
+                <span>• بيانات الكاتب (الاسم، المعرّف)</span>
+                <span>• عدد المتابعين والمتابَعين</span>
+                <span>• الإعجابات والريتويت والردود</span>
+                <span>• المشاهدات والاقتباسات</span>
+                <span>• الحفظ (Bookmarks)</span>
+                <span>• الهاشتاقات والإشارات</span>
+                <span>• الروابط المضمّنة</span>
+                <span>• الوسائط (صور/فيديو)</span>
+                <span>• نوع التغريدة (رد/ريتويت/اقتباس)</span>
+                <span>• معرّف المحادثة</span>
+                <span>• إعدادات الرد</span>
+                <span>• محتوى حساس</span>
+              </div>
+              <p className="mt-2">تُصدَّر جميع هذه الحقول في ملف CSV مع 28 عمودًا.</p>
+            </div>
+          </div>
+
+          {/* Date filter note */}
+          <div className="p-3 bg-surface-light rounded-[12px]">
+            <h4 className="text-xs font-bold text-text-primary mb-2">فلاتر التاريخ</h4>
+            <div className="text-[11px] text-text-secondary space-y-1">
+              <p><strong>الأرشيف الكامل:</strong> يبحث في جميع التغريدات منذ بداية X (يتطلب صلاحية Academic أو Enterprise).</p>
+              <p><strong>آخر 7 أيام:</strong> يبحث في تغريدات الأسبوع الأخير فقط (متاح لجميع المستويات).</p>
+              <p>استخدم حقول التاريخ أعلاه لتحديد نطاق زمني مخصص.</p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function CollapsibleJSON({ data, label }) {

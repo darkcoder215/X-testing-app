@@ -135,10 +135,10 @@ export default function LandingPage() {
         </div>
 
         <Link
-          href="/explore"
+          href="/extractor"
           className="group relative inline-flex items-center gap-3 bg-black text-white rounded-full px-8 py-4 font-bold text-base shadow-elevated hover:shadow-card-hover transition-all duration-300 hover:scale-105"
         >
-          <span>ابدأ الاستكشاف</span>
+          <span>ابدأ استخراج البيانات</span>
           <span className="text-lg transition-transform duration-300 group-hover:-translate-x-1">
             &larr;
           </span>
