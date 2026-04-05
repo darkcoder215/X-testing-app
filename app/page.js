@@ -223,7 +223,7 @@ function FlyingTweets() {
     { text: "تقنية #AI", x: "5%", delay: "0s", duration: "7s" },
     { text: "#بث_مباشر", x: "25%", delay: "1.5s", duration: "8s" },
     { text: "تحليل البيانات", x: "50%", delay: "3s", duration: "6s" },
-    { text: "#ثمانية", x: "75%", delay: "0.8s", duration: "9s" },
+    { text: "#Yaman", x: "75%", delay: "0.8s", duration: "9s" },
     { text: "رصد لحظي", x: "90%", delay: "2.5s", duration: "7.5s" },
   ];
 

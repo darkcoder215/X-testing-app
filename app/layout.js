@@ -3,7 +3,7 @@ import Sidebar from "./components/Sidebar";
 import { AuthProvider } from "./components/AuthProvider";
 
 export const metadata = {
-  title: "محلل التغريدات — ثمانية",
+  title: "محلل التغريدات — Yaman.io",
   description: "أداة تحليل وبث التغريدات لحظيًا من واجهة X البرمجية",
 };
 

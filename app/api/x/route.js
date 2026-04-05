@@ -33,7 +33,7 @@ export async function POST(request) {
     if (!bearerToken) {
       return NextResponse.json(
         {
-          error: "No Bearer Token. Add one on the Setup page.",
+          error: "لم تتم إضافة مفتاح الوصول بعد.",
           code: "AUTH_NOT_CONFIGURED",
         },
         { status: 401 }

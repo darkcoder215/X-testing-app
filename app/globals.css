@@ -126,12 +126,12 @@
   --font-body: 'Thmanyah Serif Text', 'Georgia', serif;
   --font-ui: 'Thmanyah Sans', 'Segoe UI', 'Helvetica Neue', sans-serif;
 
-  /* Primary Colors */
+  /* Primary Colors — Black & White */
   --color-brand-black: #000000;
-  --color-brand-green: #00C17A;
-  --color-brand-green-light: #B5E8BE;
-  --color-brand-blue: #0072F9;
-  --color-brand-red: #F24935;
+  --color-brand-green: #000000;
+  --color-brand-green-light: #E0E0E0;
+  --color-brand-blue: #444444;
+  --color-brand-red: #666666;
 
   /* Extended Palette */
   --color-amber: #FFBC0A;
@@ -160,10 +160,10 @@
   --color-warm-white: #F2EDEA;
 
   /* Semantic */
-  --color-success: #00C17A;
-  --color-warning: #FFBC0A;
-  --color-error: #F24935;
-  --color-info: #0072F9;
+  --color-success: #000000;
+  --color-warning: #888888;
+  --color-error: #666666;
+  --color-info: #444444;
 
   /* Surface system (light mode — Thmanyah brand) */
   --color-surface: #FFFFFF;
@@ -181,9 +181,9 @@
   --color-text-on-green: #FFFFFF;
 
   /* Interactive */
-  --color-primary: #00C17A;
-  --color-primary-dark: #00A368;
-  --color-link: #0072F9;
+  --color-primary: #000000;
+  --color-primary-dark: #333333;
+  --color-link: #000000;
 
   /* Shadows */
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06);
