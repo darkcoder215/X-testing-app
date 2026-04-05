@@ -335,9 +335,8 @@ function ChipSelect({ param, value, onChange }) {
 /* ═══════════════ Response Display ═══════════════ */
 
 function ResponseDisplay({ result, endpointKey }) {
-  const [viewMode, setViewMode] = useState("formatted");
+  const [showJson, setShowJson] = useState(false);
   const meta = result.meta || {};
-  const viewLabels = { formatted: "منسّق", raw: "JSON خام" };
 
   return (
     <div className="space-y-4 animate-fade-in-up">
@@ -367,22 +366,8 @@ function ResponseDisplay({ result, endpointKey }) {
               : result.data.data ? Array.isArray(result.data.data) ? `${result.data.data.length} عنصر` : "عنصر واحد" : ""
           }
         >
-          <div className="flex items-center gap-1 mb-4">
-            {Object.entries(viewLabels).map(([mode, label]) => (
-              <button key={mode} onClick={() => setViewMode(mode)}
-                className={`px-4 py-1.5 text-xs rounded-full font-bold transition-all-fast ${viewMode === mode ? "bg-brand-green/10 text-brand-green" : "text-text-muted hover:text-text-primary"}`}>
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {viewMode === "raw" ? (
-            <pre className="bg-dark-slate p-4 rounded-[12px] text-xs text-text-on-dark font-mono overflow-auto max-h-[600px] whitespace-pre-wrap break-words" dir="ltr">
-              {JSON.stringify(result.data, null, 2)}
-            </pre>
-          ) : (
-            <FormattedResponse data={result.data} endpointKey={endpointKey} />
-          )}
+          {/* Formatted view */}
+          <FormattedResponse data={result.data} endpointKey={endpointKey} />
 
           {result.data.meta?.next_token && (
             <ExplainerBox type="info" title="توجد نتائج إضافية">
@@ -391,6 +376,22 @@ function ResponseDisplay({ result, endpointKey }) {
           )}
 
           <ResponseConclusion data={result.data} endpointKey={endpointKey} meta={meta} />
+
+          {/* JSON toggle — always available */}
+          <div className="mt-4 border-t border-border pt-4">
+            <button
+              onClick={() => setShowJson(!showJson)}
+              className="flex items-center gap-2 text-xs font-bold text-link hover:underline transition-all-fast"
+            >
+              <span className={`transition-transform ${showJson ? "rotate-90" : ""}`}>&#9654;</span>
+              {showJson ? "إخفاء" : "عرض"} الرد الكامل (JSON)
+            </button>
+            {showJson && (
+              <pre className="mt-3 bg-dark-slate p-4 rounded-[12px] text-xs text-text-on-dark font-mono overflow-auto max-h-[600px] whitespace-pre-wrap break-words" dir="ltr">
+                {JSON.stringify(result.data, null, 2)}
+              </pre>
+            )}
+          </div>
         </InfoCard>
       )}
     </div>
