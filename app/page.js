@@ -2,350 +2,326 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useAuth } from "./components/AuthProvider";
-import InfoCard, { StatusBadge, ExplainerBox } from "./components/InfoCard";
 
-export default function DashboardPage() {
-  const { token, apiFetch, loaded } = useAuth();
-  const [status, setStatus] = useState({
-    auth: { loading: true, configured: false },
-    rules: { loading: true, count: 0 },
-    stream: { loading: true, connected: false },
-  });
-
-  useEffect(() => {
-    if (!loaded) return;
-    const hasToken = Boolean(token);
-
-    if (!hasToken) {
-      setStatus({
-        auth: { loading: false, configured: false },
-        rules: { loading: false, count: 0 },
-        stream: { loading: false, connected: false },
-      });
-      return;
-    }
-
-    Promise.allSettled([
-      apiFetch("/api/auth").then((r) => r.json()),
-      apiFetch("/api/rules").then((r) => r.json()),
-      apiFetch("/api/stream", {
-        method: "POST",
-        body: JSON.stringify({ action: "status" }),
-      }).then((r) => r.json()),
-    ]).then(([authRes, rulesRes, streamRes]) => {
-      setStatus({
-        auth: {
-          loading: false,
-          configured: authRes.status === "fulfilled" && authRes.value.configured,
-        },
-        rules: {
-          loading: false,
-          count: rulesRes.status === "fulfilled" ? (rulesRes.value.rules?.length || 0) : 0,
-          error: rulesRes.status === "fulfilled" ? rulesRes.value.error : null,
-        },
-        stream: {
-          loading: false,
-          connected: streamRes.status === "fulfilled" && streamRes.value.connected,
-          stats: streamRes.status === "fulfilled" ? streamRes.value.stats : null,
-        },
-      });
-    });
-  }, [loaded, token, apiFetch]);
-
-  const allConfigured = status.auth.configured && status.rules.count > 0;
+export default function LandingPage() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   return (
-    <div className="space-y-8">
-      {/* Hero Header */}
-      <div className="animate-fade-in-up">
-        <h1 className="font-display text-4xl font-black text-text-primary">الرئيسية</h1>
-        <p className="font-body text-text-secondary mt-2 text-base">
-          نظرة شاملة على حالة أداة تحليل التغريدات ومتابعتها لحظيًا
+    <div className="min-h-[calc(100vh-40px)] flex flex-col items-center justify-center px-6 py-12 overflow-hidden relative">
+      {/* Floating decorative shapes */}
+      <FloatingShapes />
+
+      {/* Hero */}
+      <div className="text-center max-w-2xl mx-auto relative z-10">
+        <div
+          className={`transition-all duration-700 ${
+            mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+          }`}
+        >
+          <div className="inline-flex items-center gap-2 bg-surface rounded-full px-4 py-2 shadow-card mb-8 border border-border">
+            <span className="w-2 h-2 rounded-full bg-black animate-pulse-dot" />
+            <span className="text-xs font-bold text-text-secondary">Yaman.io</span>
+          </div>
+        </div>
+
+        <h1
+          className={`font-display text-5xl md:text-6xl font-black text-text-primary leading-tight transition-all duration-700 delay-100 ${
+            mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+          }`}
+        >
+          حلّل تغريدات
+          <br />
+          <span className="relative inline-block">
+            منصة X
+            <svg
+              className="absolute -bottom-2 right-0 w-full"
+              viewBox="0 0 200 12"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M2 8C40 2 80 4 120 6C145 7 170 5 198 3"
+                stroke="black"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                className={mounted ? "animate-draw-line" : ""}
+                style={{
+                  strokeDasharray: 200,
+                  strokeDashoffset: mounted ? 0 : 200,
+                }}
+              />
+            </svg>
+          </span>
+          {" "}بذكاء
+        </h1>
+
+        <p
+          className={`font-body text-text-secondary text-lg mt-6 leading-relaxed max-w-lg mx-auto transition-all duration-700 delay-200 ${
+            mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+          }`}
+        >
+          استكشف واجهات X البرمجية، تابع التغريدات لحظيًا،
+          واستخرج البيانات بسهولة — كل ذلك من مكان واحد.
         </p>
       </div>
 
-      {/* Status Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <StatusCard
-          title="التوثيق"
-          subtitle="ربط حسابك"
-          loading={status.auth.loading}
-          configured={status.auth.configured}
-          configuredLabel="تم الربط"
-          notConfiguredLabel="لم يتم الربط بعد"
-          href="/rules"
-          linkLabel="إدارة القواعد"
-          color="green"
-          delay="delay-1"
+      {/* Capability Cards */}
+      <div
+        className={`grid grid-cols-1 md:grid-cols-3 gap-5 max-w-3xl mx-auto mt-14 w-full relative z-10 transition-all duration-700 delay-300 ${
+          mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+        }`}
+      >
+        <CapabilityCard
+          icon={<ExploreGraphic />}
+          title="استكشاف API"
+          description="جرّب 14 واجهة برمجية مع نتائج فورية"
+          delay={0}
         />
-        <StatusCard
-          title="قواعد التصفية"
-          subtitle="ماذا تريد متابعته؟"
-          loading={status.rules.loading}
-          configured={status.rules.count > 0}
-          configuredLabel={`${status.rules.count} قاعدة نشطة`}
-          notConfiguredLabel={status.rules.error ? "خطأ في التحميل" : "لا توجد قواعد"}
-          href="/rules"
-          linkLabel="إدارة القواعد"
-          color="blue"
-          delay="delay-2"
+        <CapabilityCard
+          icon={<StreamGraphic />}
+          title="بث مباشر"
+          description="شاهد التغريدات المطابقة لحظة نشرها"
+          delay={100}
         />
-        <StatusCard
-          title="البث المباشر"
-          subtitle="التغريدات لحظيًا"
-          loading={status.stream.loading}
-          configured={status.stream.connected}
-          configuredLabel="متصل الآن"
-          notConfiguredLabel="غير متصل"
-          href="/stream"
-          linkLabel="شاهد البث"
-          color="amber"
-          delay="delay-3"
+        <CapabilityCard
+          icon={<ExtractGraphic />}
+          title="استخراج بيانات"
+          description="صدّر آلاف التغريدات كملف CSV"
+          delay={200}
         />
       </div>
 
-      {/* Flying Tweets Decoration + Getting Started */}
-      {!allConfigured && (
-        <div className="relative">
-          {/* Flying tweet decorations */}
-          <FlyingTweets />
-
-          <InfoCard
-            title="ابدأ الآن"
-            description="ثلاث خطوات بسيطة لتبدأ متابعة التغريدات التي تهمك"
-            green
-          >
-            <div className="space-y-5">
-              <ExplainerBox type="tip" title="لا تحتاج أي إعدادات تقنية معقدة!">
-                كل ما تحتاجه هو مفتاح من منصة X للمطورين. تلصقه هنا مرة واحدة
-                ويُحفظ في متصفحك — لا حاجة لإعدادات خوادم أو متغيرات بيئية.
-              </ExplainerBox>
-
-              <Step
-                number={1}
-                title="أضف مفتاح الوصول"
-                description="احصل على Bearer Token من بوابة X للمطورين. فكّر فيه كمفتاح يعطيك صلاحية قراءة التغريدات."
-                done={status.auth.configured}
-                href="/rules"
-              />
-              <Step
-                number={2}
-                title="حدد قواعد المتابعة"
-                description='القواعد تحدد أي التغريدات تصلك. مثلًا: "#تقنية lang:ar" تعني أنك تريد التغريدات العربية عن التقنية.'
-                done={status.rules.count > 0}
-                href="/rules"
-              />
-              <Step
-                number={3}
-                title="ابدأ البث المباشر"
-                description="اضغط تشغيل وشاهد التغريدات المطابقة لقواعدك وهي تظهر أمامك لحظة بلحظة، كأنك تشاهد بثًا مباشرًا."
-                done={status.stream.connected}
-                href="/stream"
-              />
-            </div>
-          </InfoCard>
-        </div>
-      )}
-
-      {/* How It Works — Non-technical pipeline */}
-      <InfoCard
-        title="كيف تعمل الأداة؟"
-        description="شرح مبسط للآلية من البداية للنهاية"
+      {/* CTA with animated arrow */}
+      <div
+        className={`mt-16 flex flex-col items-center relative z-10 transition-all duration-700 delay-500 ${
+          mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+        }`}
       >
-        <div className="space-y-5">
-          <ExplainerBox type="info" title="ما هو البث المُصفّى؟">
-            تخيّل أنك تجلس أمام شاشة تعرض كل تغريدات العالم. البث المُصفّى يتيح لك
-            أن تختار فقط التغريدات التي تهمك — كأنك وضعت فلتر على هذه الشاشة.
-            بدلًا من البحث يدويًا، التغريدات تأتيك تلقائيًا لحظة نشرها.
-          </ExplainerBox>
-
-          {/* Animated Pipeline */}
-          <div className="flex items-center gap-2 py-5 px-4 bg-surface-light rounded-[16px] overflow-x-auto">
-            <PipelineStep label="قواعدك" sublabel="ماذا تريد؟" icon="filter" />
-            <AnimatedArrow />
-            <PipelineStep label="منصة X" sublabel="تبحث لك" icon="search" />
-            <AnimatedArrow />
-            <PipelineStep label="البث" sublabel="ترسل لحظيًا" icon="stream" />
-            <AnimatedArrow />
-            <PipelineStep label="هنا" sublabel="تظهر أمامك" icon="display" />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 bg-surface-light rounded-[12px]">
-              <p className="font-bold text-text-primary text-sm">القواعد (حتى 1,000 قاعدة)</p>
-              <p className="text-text-secondary text-xs mt-2 font-body leading-relaxed">
-                حدد كلمات مفتاحية، هاشتاقات، حسابات معينة، أو لغات محددة.
-                كل قاعدة تعمل بشكل مستقل — إذا تغريدة طابقت أي قاعدة، ستصلك.
-              </p>
-            </div>
-            <div className="p-4 bg-surface-light rounded-[12px]">
-              <p className="font-bold text-text-primary text-sm">اتصال مستمر</p>
-              <p className="text-text-secondary text-xs mt-2 font-body leading-relaxed">
-                الأداة تحافظ على اتصال دائم مع X. إذا انقطع الاتصال لأي سبب،
-                تعيد الاتصال تلقائيًا. لا تحتاج أن تفعل شيئًا.
-              </p>
-            </div>
-          </div>
-
-          {/* Conclusion Box */}
-          <div className="p-4 bg-brand-green-light/30 rounded-[12px] border border-brand-green/20">
-            <p className="font-bold text-brand-green text-sm mb-1">الخلاصة</p>
-            <p className="text-text-primary text-sm font-body leading-relaxed">
-              الأداة تعمل كمراقب ذكي — تحدد لها ما يهمك، وهي تجمع لك
-              التغريدات المطابقة لحظة نشرها. مفيدة لمتابعة الأحداث، رصد
-              المنافسين، تحليل الرأي العام، أو أي شيء يحدث على X.
-            </p>
-          </div>
+        {/* Hand-drawn arrow */}
+        <div className={`mb-4 ${mounted ? "animate-bounce-gentle" : ""}`}>
+          <svg
+            width="40"
+            height="60"
+            viewBox="0 0 40 60"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className={mounted ? "animate-draw-arrow" : ""}
+          >
+            <path
+              d="M20 2C18 15 22 28 20 42"
+              stroke="black"
+              strokeWidth="2"
+              strokeLinecap="round"
+              style={{
+                strokeDasharray: 50,
+                strokeDashoffset: mounted ? 0 : 50,
+                transition: "stroke-dashoffset 1s ease 0.8s",
+              }}
+            />
+            <path
+              d="M10 35L20 48L30 35"
+              stroke="black"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{
+                strokeDasharray: 30,
+                strokeDashoffset: mounted ? 0 : 30,
+                transition: "stroke-dashoffset 0.6s ease 1.4s",
+              }}
+            />
+          </svg>
         </div>
-      </InfoCard>
 
-      {/* Stream Stats (if connected) */}
-      {status.stream.stats && status.stream.stats.totalPosts > 0 && (
-        <InfoCard title="إحصائيات البث">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-            <Stat label="إجمالي التغريدات" value={status.stream.stats.totalPosts} />
-            <Stat label="مكررات تم تصفيتها" value={status.stream.stats.duplicatesFiltered} />
-            <Stat label="متصلون الآن" value={status.stream.stats.connectedClients} />
-            <Stat label="مدة الاتصال" value={formatUptime(status.stream.stats.uptime)} />
+        <Link
+          href="/explore"
+          className="group relative inline-flex items-center gap-3 bg-black text-white rounded-full px-8 py-4 font-bold text-base shadow-elevated hover:shadow-card-hover transition-all duration-300 hover:scale-105"
+        >
+          <span>ابدأ الاستكشاف</span>
+          <span className="text-lg transition-transform duration-300 group-hover:-translate-x-1">
+            &larr;
+          </span>
+        </Link>
+
+        <p className="text-xs text-text-muted mt-4 font-body">
+          لا تحتاج حسابًا — فقط أدخل مفتاح الوصول وابدأ
+        </p>
+      </div>
+
+      {/* Footer brand */}
+      <div
+        className={`mt-20 text-center relative z-10 transition-all duration-1000 delay-700 ${
+          mounted ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        <div className="flex items-center justify-center gap-2 text-text-muted">
+          <div className="w-5 h-5 rounded-full bg-black flex items-center justify-center">
+            <span className="text-white text-[10px] font-black">X</span>
           </div>
-        </InfoCard>
-      )}
+          <span className="text-xs font-bold">by Yaman.io</span>
+        </div>
+      </div>
     </div>
   );
 }
 
 /* ═══════════════════════════════════════════════════════
-   Flying Tweets — decorative animated tweet snippets
+   Floating Shapes — decorative background elements
    ═══════════════════════════════════════════════════════ */
-function FlyingTweets() {
-  const tweets = [
-    { text: "تقنية #AI", x: "5%", delay: "0s", duration: "7s" },
-    { text: "#بث_مباشر", x: "25%", delay: "1.5s", duration: "8s" },
-    { text: "تحليل البيانات", x: "50%", delay: "3s", duration: "6s" },
-    { text: "#Yaman", x: "75%", delay: "0.8s", duration: "9s" },
-    { text: "رصد لحظي", x: "90%", delay: "2.5s", duration: "7.5s" },
-  ];
-
+function FloatingShapes() {
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden -z-0">
-      {tweets.map((t, i) => (
-        <div
-          key={i}
-          className="absolute bottom-0 opacity-0"
-          style={{
-            right: t.x,
-            animation: `fly-up ${t.duration} ease-in-out ${t.delay} infinite`,
-          }}
-        >
-          <div className="bg-surface/80 backdrop-blur-sm border border-border rounded-[12px] px-3 py-2 shadow-card text-xs text-text-secondary whitespace-nowrap">
-            {t.text}
-          </div>
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      {/* Circles */}
+      <div
+        className="absolute w-64 h-64 rounded-full border border-border/50 animate-float"
+        style={{ top: "8%", left: "5%" }}
+      />
+      <div
+        className="absolute w-40 h-40 rounded-full bg-surface-light/60 animate-float"
+        style={{ top: "15%", right: "8%", animationDelay: "2s" }}
+      />
+      <div
+        className="absolute w-20 h-20 rounded-full border-2 border-border animate-float"
+        style={{ bottom: "20%", left: "12%", animationDelay: "4s" }}
+      />
+
+      {/* Dots grid */}
+      <div
+        className="absolute opacity-[0.15]"
+        style={{ top: "30%", right: "15%" }}
+      >
+        <DotGrid rows={4} cols={4} />
+      </div>
+      <div
+        className="absolute opacity-[0.1]"
+        style={{ bottom: "25%", left: "8%" }}
+      >
+        <DotGrid rows={3} cols={5} />
+      </div>
+
+      {/* Line accents */}
+      <svg
+        className="absolute top-[40%] right-[3%] opacity-10"
+        width="120"
+        height="2"
+      >
+        <line x1="0" y1="1" x2="120" y2="1" stroke="black" strokeWidth="2" />
+      </svg>
+      <svg
+        className="absolute bottom-[35%] left-[5%] opacity-10"
+        width="80"
+        height="2"
+      >
+        <line x1="0" y1="1" x2="80" y2="1" stroke="black" strokeWidth="2" />
+      </svg>
+    </div>
+  );
+}
+
+function DotGrid({ rows, cols }) {
+  return (
+    <div className="flex flex-col gap-3">
+      {Array.from({ length: rows }).map((_, r) => (
+        <div key={r} className="flex gap-3">
+          {Array.from({ length: cols }).map((_, c) => (
+            <div key={c} className="w-1.5 h-1.5 rounded-full bg-black" />
+          ))}
         </div>
       ))}
     </div>
   );
 }
 
-function StatusCard({ title, subtitle, loading, configured, configuredLabel, notConfiguredLabel, href, linkLabel, color, delay }) {
-  const borderColors = {
-    green: "border-t-brand-green",
-    blue: "border-t-brand-blue",
-    amber: "border-t-amber",
-  };
-
+/* ═══════════════════════════════════════════════════════
+   Capability Card
+   ═══════════════════════════════════════════════════════ */
+function CapabilityCard({ icon, title, description, delay }) {
   return (
-    <div className={`animate-fade-in-up opacity-0 ${delay} bg-surface rounded-[16px] shadow-card hover:shadow-card-hover transition-all-fast p-5 border-t-[3px] ${borderColors[color]}`}>
-      <div className="mb-3">
-        <h3 className="font-bold text-text-primary text-sm">{title}</h3>
-        <p className="text-xs text-text-secondary mt-0.5">{subtitle}</p>
-      </div>
-      <div className="mb-3">
-        {loading ? (
-          <div className="h-6 w-24 rounded-full animate-shimmer" />
-        ) : (
-          <StatusBadge
-            status={configured ? "success" : "warning"}
-            label={configured ? configuredLabel : notConfiguredLabel}
-          />
-        )}
-      </div>
-      <Link
-        href={href}
-        className="text-sm text-link hover:underline font-bold transition-all-fast"
-      >
-        {linkLabel} &larr;
-      </Link>
+    <div
+      className="bg-surface rounded-[16px] p-6 shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 border border-border/50 text-center"
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      <div className="flex justify-center mb-4">{icon}</div>
+      <h3 className="font-bold text-text-primary text-sm mb-1">{title}</h3>
+      <p className="text-xs text-text-secondary font-body leading-relaxed">
+        {description}
+      </p>
     </div>
   );
 }
 
-function Step({ number, title, description, done, href }) {
+/* ═══════════════════════════════════════════════════════
+   Mini Graphics for Capability Cards
+   ═══════════════════════════════════════════════════════ */
+function ExploreGraphic() {
   return (
-    <div className="flex gap-4 animate-fade-in-up opacity-0" style={{ animationDelay: `${number * 0.15}s` }}>
-      <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-black ${
-        done ? "bg-brand-green/20 text-brand-green" : "bg-surface-lighter text-text-secondary"
-      }`}>
-        {done ? "\u2713" : number}
-      </div>
-      <div className="flex-1">
-        <div className="flex items-center gap-2">
-          <h3 className={`font-bold ${done ? "text-brand-green" : "text-text-primary"}`}>{title}</h3>
-          {done && <StatusBadge status="success" label="تم" />}
-        </div>
-        <p className="text-sm text-text-secondary mt-1 font-body leading-relaxed">{description}</p>
-        {!done && (
-          <Link href={href} className="text-sm text-link hover:underline font-bold mt-2 inline-block">
-            {title} &larr;
-          </Link>
-        )}
-      </div>
-    </div>
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      {/* Search magnifier */}
+      <circle cx="22" cy="22" r="10" stroke="black" strokeWidth="2.5" />
+      <line
+        x1="29"
+        y1="29"
+        x2="38"
+        y2="38"
+        stroke="black"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
+      {/* Data lines inside */}
+      <line x1="17" y1="19" x2="27" y2="19" stroke="black" strokeWidth="1.5" strokeLinecap="round" opacity="0.4" />
+      <line x1="17" y1="23" x2="24" y2="23" stroke="black" strokeWidth="1.5" strokeLinecap="round" opacity="0.4" />
+    </svg>
   );
 }
 
-function PipelineStep({ label, sublabel, icon }) {
-  const icons = {
-    filter: "\u2726",
-    search: "\u2315",
-    stream: "\u26A1",
-    display: "\u25C9",
-  };
-
+function StreamGraphic() {
   return (
-    <div className="text-center px-4 py-3 bg-surface rounded-[12px] shadow-card flex-shrink-0 min-w-[90px]">
-      <div className="text-xl mb-1">{icons[icon]}</div>
-      <div className="font-bold text-text-primary text-sm">{label}</div>
-      <div className="text-[11px] text-text-secondary">{sublabel}</div>
-    </div>
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      {/* Signal waves */}
+      <circle cx="24" cy="24" r="6" fill="black" />
+      <path
+        d="M14 14C18.5 18.5 18.5 29.5 14 34"
+        stroke="black"
+        strokeWidth="2"
+        strokeLinecap="round"
+        opacity="0.3"
+      />
+      <path
+        d="M34 14C29.5 18.5 29.5 29.5 34 34"
+        stroke="black"
+        strokeWidth="2"
+        strokeLinecap="round"
+        opacity="0.3"
+      />
+      <path
+        d="M9 9C16 16 16 32 9 39"
+        stroke="black"
+        strokeWidth="2"
+        strokeLinecap="round"
+        opacity="0.15"
+      />
+      <path
+        d="M39 9C32 16 32 32 39 39"
+        stroke="black"
+        strokeWidth="2"
+        strokeLinecap="round"
+        opacity="0.15"
+      />
+    </svg>
   );
 }
 
-function AnimatedArrow() {
+function ExtractGraphic() {
   return (
-    <div className="flex items-center gap-0.5 flex-shrink-0">
-      <span className="w-1.5 h-1.5 rounded-full bg-brand-green animate-flow" />
-      <span className="w-1.5 h-1.5 rounded-full bg-brand-green animate-flow delay-1" />
-      <span className="w-1.5 h-1.5 rounded-full bg-brand-green animate-flow delay-2" />
-    </div>
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+      {/* Bar chart */}
+      <rect x="8" y="28" width="6" height="12" rx="1" fill="black" opacity="0.2" />
+      <rect x="17" y="20" width="6" height="20" rx="1" fill="black" opacity="0.4" />
+      <rect x="26" y="14" width="6" height="26" rx="1" fill="black" opacity="0.6" />
+      <rect x="35" y="8" width="6" height="32" rx="1" fill="black" opacity="0.9" />
+      {/* Download arrow */}
+      <line x1="24" y1="42" x2="24" y2="44" stroke="black" strokeWidth="1.5" strokeLinecap="round" opacity="0" />
+    </svg>
   );
-}
-
-function Stat({ label, value }) {
-  return (
-    <div className="text-center p-3 bg-surface-light rounded-[12px]">
-      <div className="font-display text-3xl font-black text-text-primary animate-score">{value}</div>
-      <div className="text-xs text-text-secondary mt-1 font-bold">{label}</div>
-    </div>
-  );
-}
-
-function formatUptime(seconds) {
-  if (!seconds || seconds === 0) return "0 ث";
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0) return `${h} س ${m} د`;
-  if (m > 0) return `${m} د ${s} ث`;
-  return `${s} ث`;
 }

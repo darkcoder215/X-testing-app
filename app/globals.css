@@ -411,6 +411,25 @@ h1, h2, h3, .font-display {
   animation: score-reveal 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
+/* Hand-drawn line — SVG stroke animation */
+@keyframes draw-line {
+  0% { stroke-dashoffset: 200; }
+  100% { stroke-dashoffset: 0; }
+}
+.animate-draw-line {
+  animation: draw-line 1s ease-out 0.5s forwards;
+  stroke-dashoffset: 200;
+}
+
+/* Gentle bounce for the arrow */
+@keyframes bounce-gentle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(6px); }
+}
+.animate-bounce-gentle {
+  animation: bounce-gentle 2s ease-in-out 2s infinite;
+}
+
 /* ══════════════════════════════════════════════════════════════
    Pill buttons — Thmanyah brand style
    ══════════════════════════════════════════════════════════════ */
