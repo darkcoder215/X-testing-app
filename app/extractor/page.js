@@ -315,7 +315,13 @@ export default function ExtractorPage() {
           </div>
 
           {/* AI Query Assistant */}
-          <AIQueryAssistant onUseQuery={setQuery} />
+          <AIQueryAssistant
+            onUseQuery={(q, startIso, endIso) => {
+              setQuery(q);
+              if (startIso) setStartDate(toDatetimeLocal(startIso));
+              if (endIso) setEndDate(toDatetimeLocal(endIso));
+            }}
+          />
 
           {/* Search Operators Guide */}
           <SearchOperatorsGuide />
@@ -501,6 +507,15 @@ export default function ExtractorPage() {
 
 /* ═══════════════ Helpers ═══════════════ */
 
+// Convert an ISO-8601 timestamp to the format required by <input type="datetime-local">.
+function toDatetimeLocal(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d)) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function dedupeById(arr) {
   const seen = new Set();
   return arr.filter((item) => {
@@ -560,7 +575,7 @@ function AIQueryAssistant({ onUseQuery }) {
 
   function useQuery() {
     if (result?.query) {
-      onUseQuery(result.query);
+      onUseQuery(result.query, result.start_time, result.end_time);
       // Scroll to top so user sees the populated search box
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
