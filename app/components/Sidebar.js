@@ -34,7 +34,7 @@ export default function Sidebar() {
       {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 right-0 left-0 h-14 bg-dark-slate flex items-center justify-between px-4 z-50">
         <div className="flex items-center gap-2">
-          <img src="/rimthan-logo.jpg" alt="Rimthan" className="h-8 w-auto" />
+          <img src="/rimthan-logo.jpg" alt="Rimthan" className="h-11 w-auto" />
         </div>
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
@@ -77,8 +77,8 @@ export default function Sidebar() {
         `}
       >
         {/* Logo — desktop only */}
-        <div className="hidden md:block p-6 border-b border-charcoal">
-          <img src="/rimthan-logo.jpg" alt="Rimthan" className="h-12 w-auto mx-auto" />
+        <div className="hidden md:block p-5 border-b border-charcoal">
+          <img src="/rimthan-logo.jpg" alt="Rimthan" className="w-full h-auto rounded-lg" />
           <p className="text-[11px] text-muted mt-3 text-center">محلل التغريدات</p>
         </div>
 

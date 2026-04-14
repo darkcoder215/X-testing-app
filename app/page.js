@@ -19,8 +19,8 @@ export default function LandingPage() {
             mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
           }`}
         >
-          <div className="inline-flex items-center gap-2 bg-dark-slate rounded-full px-4 py-2 shadow-card mb-8">
-            <img src="/rimthan-logo.jpg" alt="Rimthan" className="h-5 w-auto" />
+          <div className="inline-flex items-center gap-2 bg-dark-slate rounded-2xl px-6 py-3 shadow-card mb-8">
+            <img src="/rimthan-logo.jpg" alt="Rimthan" className="h-10 w-auto" />
           </div>
         </div>
 
@@ -154,9 +154,9 @@ export default function LandingPage() {
           mounted ? "opacity-100" : "opacity-0"
         }`}
       >
-        <div className="inline-flex items-center gap-2 bg-dark-slate rounded-full px-4 py-2">
-          <span className="text-[10px] font-bold text-white/60">by</span>
-          <img src="/rimthan-logo.jpg" alt="Rimthan" className="h-4 w-auto" />
+        <div className="inline-flex items-center gap-3 bg-dark-slate rounded-2xl px-5 py-3">
+          <span className="text-xs font-bold text-white/60">by</span>
+          <img src="/rimthan-logo.jpg" alt="Rimthan" className="h-7 w-auto" />
         </div>
       </div>
     </div>
