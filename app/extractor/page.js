@@ -25,7 +25,7 @@ export default function ExtractorPage() {
   const [query, setQuery] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [maxTweets, setMaxTweets] = useState(500);
+  const [maxTweets, setMaxTweets] = useState(10);
 
   // Extraction state
   const [extracting, setExtracting] = useState(false);
@@ -253,7 +253,7 @@ export default function ExtractorPage() {
               <div>
                 <label className="text-[11px] font-bold text-text-secondary mb-1.5 block">الحد الأقصى</label>
                 <div className="flex gap-1">
-                  {[100, 500, 1000, 5000, 10000].map((n) => (
+                  {[5, 10, 20, 30, 50].map((n) => (
                     <button
                       key={n}
                       onClick={() => setMaxTweets(n)}
@@ -314,8 +314,10 @@ export default function ExtractorPage() {
             </div>
           </div>
 
-          {/* AI Query Assistant */}
+          {/* AI Query Assistant — conversational, asks clarifying questions first */}
           <AIQueryAssistant
+            maxTweets={maxTweets}
+            costPerTweet={COST_PER_TWEET}
             onUseQuery={(q, startIso, endIso) => {
               setQuery(q);
               if (startIso) setStartDate(toDatetimeLocal(startIso));
@@ -431,7 +433,7 @@ export default function ExtractorPage() {
               <input
                 type="number"
                 value={maxTweets}
-                onChange={(e) => setMaxTweets(Math.max(10, parseInt(e.target.value) || 10))}
+                onChange={(e) => setMaxTweets(Math.max(1, parseInt(e.target.value) || 1))}
                 dir="ltr"
                 className="w-full px-3 py-2 bg-surface-light border border-border rounded-[10px] text-sm text-text-primary font-mono focus:outline-none focus:border-brand-black"
               />
@@ -536,35 +538,63 @@ function dedupeByKey(arr) {
 }
 
 /* ═══════════════ AI Query Assistant ═══════════════ */
-function AIQueryAssistant({ onUseQuery }) {
-  const [intent, setIntent] = useState("");
+// Conversational: the assistant asks 1-3 clarifying questions (account,
+// date range, language, content type) before drafting the final query.
+// Once drafted, shows an expected cost estimate based on the current
+// maxTweets selection before the user executes.
+function AIQueryAssistant({ onUseQuery, maxTweets, costPerTweet }) {
+  const [messages, setMessages] = useState([]); // { role: "user"|"assistant", content }
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
+  const [draft, setDraft] = useState(null);
+  const [refused, setRefused] = useState(null);
   const [error, setError] = useState(null);
 
   const EXAMPLES = [
-    "تغريدات عربية عن الذكاء الاصطناعي آخر أسبوع بدون ريتويت",
-    "كل تغريدات إيلون ماسك التي تحتوي صورًا",
-    "الردود على تغريدة فيها كلمة اقتصاد",
+    "تغريدات عربية عن الذكاء الاصطناعي",
+    "تغريدات إيلون ماسك فيها صور",
+    "ردود على موضوع الاقتصاد",
   ];
 
-  async function draft(userIntent) {
-    const text = (userIntent ?? intent).trim();
-    if (!text) return;
+  const started = messages.length > 0 || loading;
+  const estCost = (Math.max(1, maxTweets) * costPerTweet).toFixed(2);
+
+  async function send(textOverride) {
+    const content = (textOverride ?? input).trim();
+    if (!content || loading) return;
+
+    const newMessages = [...messages, { role: "user", content }];
+    setMessages(newMessages);
+    setInput("");
     setLoading(true);
     setError(null);
-    setResult(null);
+
     try {
       const res = await fetch("/api/draft-query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ intent: text }),
+        body: JSON.stringify({ messages: newMessages }),
       });
       const data = await res.json();
       if (!res.ok || data.error) {
         setError(data);
-      } else {
-        setResult(data);
+        return;
+      }
+      if (data.type === "refused") {
+        setRefused(data);
+        return;
+      }
+      if (data.type === "question") {
+        setMessages([...newMessages, { role: "assistant", content: data.question }]);
+      } else if (data.type === "query") {
+        setDraft(data);
+        setMessages([
+          ...newMessages,
+          {
+            role: "assistant",
+            content: data.explanation || "جاهز — هذا هو الاستعلام المقترح.",
+          },
+        ]);
       }
     } catch (err) {
       setError({ error: err.message || "خطأ في الاتصال.", code: "NETWORK_ERROR" });
@@ -574,89 +604,158 @@ function AIQueryAssistant({ onUseQuery }) {
   }
 
   function useQuery() {
-    if (result?.query) {
-      onUseQuery(result.query, result.start_time, result.end_time);
-      // Scroll to top so user sees the populated search box
+    if (draft?.query) {
+      onUseQuery(draft.query, draft.start_time, draft.end_time);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   }
 
+  function reset() {
+    setMessages([]);
+    setDraft(null);
+    setRefused(null);
+    setError(null);
+    setInput("");
+  }
+
   return (
     <div className="bg-gradient-to-br from-surface to-surface-light rounded-[16px] shadow-card p-4 md:p-5 border border-border/50 animate-fade-in-up">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-7 h-7 rounded-full bg-brand-black flex items-center justify-center flex-shrink-0">
-          <span className="text-white text-[10px] font-black">AI</span>
+      {/* Header */}
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-7 h-7 rounded-full bg-brand-black flex items-center justify-center flex-shrink-0">
+            <span className="text-white text-[10px] font-black">AI</span>
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-bold text-sm text-text-primary">مساعد الاستعلام الذكي</h3>
+            <p className="text-[11px] text-text-muted mt-0.5">
+              {started
+                ? "أجب عن الأسئلة ليصيغ الاستعلام لك"
+                : "صف ما تريده وسيطرح أسئلة توضيحية قبل الصياغة"}
+            </p>
+          </div>
         </div>
-        <div>
-          <h3 className="font-bold text-sm text-text-primary">مساعد الاستعلام الذكي</h3>
-          <p className="text-[11px] text-text-muted mt-0.5">صف ما تريده بلغتك وسيصوغ الاستعلام نيابة عنك</p>
-        </div>
-      </div>
-
-      <div className="relative">
-        <textarea
-          value={intent}
-          onChange={(e) => setIntent(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              draft();
-            }
-          }}
-          placeholder="مثال: تغريدات عربية عن كأس العالم من حسابات موثقة بدون ريتويت"
-          rows={2}
-          maxLength={500}
-          className="w-full px-4 py-3 bg-surface border-2 border-border rounded-[12px] text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-black focus:ring-2 focus:ring-brand-black/10 text-sm resize-none"
-        />
-        <span className="absolute bottom-2 left-3 text-[10px] text-text-muted font-mono">
-          {intent.length}/500
-        </span>
-      </div>
-
-      {/* Quick example chips */}
-      <div className="flex flex-wrap gap-1.5 mt-2">
-        {EXAMPLES.map((ex) => (
+        {started && (
           <button
-            key={ex}
-            onClick={() => {
-              setIntent(ex);
-              draft(ex);
-            }}
-            disabled={loading}
-            className="text-[10px] px-2.5 py-1 rounded-full bg-surface-light text-text-secondary hover:text-text-primary hover:bg-surface transition-all-fast border border-border/50 disabled:opacity-50"
+            onClick={reset}
+            className="text-[11px] text-text-muted hover:text-text-primary font-bold flex-shrink-0"
           >
-            {ex}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex items-center gap-2 mt-3">
-        <button
-          onClick={() => draft()}
-          disabled={!intent.trim() || loading}
-          className="btn-primary text-sm py-2 px-5 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
-        >
-          {loading ? (
-            <>
-              <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              جارٍ الصياغة...
-            </>
-          ) : (
-            <>
-              <span>✨</span>
-              اصُغ الاستعلام
-            </>
-          )}
-        </button>
-        {intent && !loading && (
-          <button
-            onClick={() => { setIntent(""); setResult(null); setError(null); }}
-            className="text-xs text-text-muted hover:text-text-primary"
-          >
-            مسح
+            محادثة جديدة
           </button>
         )}
       </div>
+
+      {/* Conversation log */}
+      {messages.length > 0 && (
+        <div className="space-y-2 mb-3 max-h-[320px] overflow-y-auto pl-1">
+          {messages.map((m, i) => (
+            <div
+              key={i}
+              className={`flex ${m.role === "user" ? "justify-start" : "justify-end"}`}
+            >
+              <div
+                className={`max-w-[85%] px-3 py-2 rounded-[12px] text-xs leading-relaxed whitespace-pre-wrap ${
+                  m.role === "user"
+                    ? "bg-brand-black text-white"
+                    : "bg-surface border border-border/50 text-text-primary"
+                }`}
+              >
+                {m.content}
+              </div>
+            </div>
+          ))}
+          {loading && (
+            <div className="flex justify-end">
+              <div className="px-3 py-2 rounded-[12px] bg-surface border border-border/50">
+                <span className="flex gap-1">
+                  <span
+                    className="w-1.5 h-1.5 rounded-full bg-text-muted animate-bounce"
+                    style={{ animationDelay: "0ms" }}
+                  />
+                  <span
+                    className="w-1.5 h-1.5 rounded-full bg-text-muted animate-bounce"
+                    style={{ animationDelay: "150ms" }}
+                  />
+                  <span
+                    className="w-1.5 h-1.5 rounded-full bg-text-muted animate-bounce"
+                    style={{ animationDelay: "300ms" }}
+                  />
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Input — hidden once we have a finalized draft or a refusal */}
+      {!draft && !refused && (
+        <>
+          <div className="relative">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  send();
+                }
+              }}
+              placeholder={
+                started
+                  ? "اكتب إجابتك..."
+                  : "مثال: تغريدات عربية عن كأس العالم من حسابات موثقة"
+              }
+              rows={2}
+              maxLength={500}
+              disabled={loading}
+              className="w-full px-4 py-3 bg-surface border-2 border-border rounded-[12px] text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-black focus:ring-2 focus:ring-brand-black/10 text-sm resize-none disabled:opacity-60"
+            />
+            <span className="absolute bottom-2 left-3 text-[10px] text-text-muted font-mono">
+              {input.length}/500
+            </span>
+          </div>
+
+          {!started && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {EXAMPLES.map((ex) => (
+                <button
+                  key={ex}
+                  onClick={() => send(ex)}
+                  disabled={loading}
+                  className="text-[10px] px-2.5 py-1 rounded-full bg-surface-light text-text-secondary hover:text-text-primary hover:bg-surface transition-all-fast border border-border/50 disabled:opacity-50"
+                >
+                  {ex}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 mt-3">
+            <button
+              onClick={() => send()}
+              disabled={!input.trim() || loading}
+              className="btn-primary text-sm py-2 px-5 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  جارٍ التحليل...
+                </>
+              ) : started ? (
+                <span>إرسال</span>
+              ) : (
+                <>
+                  <span>✨</span>
+                  ابدأ
+                </>
+              )}
+            </button>
+            <p className="text-[10px] text-text-muted font-body flex-1">
+              سأطرح عليك 1–3 أسئلة قبل صياغة الاستعلام.
+            </p>
+          </div>
+        </>
+      )}
 
       {/* Error */}
       {error && (
@@ -665,9 +764,22 @@ function AIQueryAssistant({ onUseQuery }) {
             <span className="text-red-600 text-sm flex-shrink-0">⚠️</span>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold text-red-800">{error.error}</p>
-              {error.code && <p className="text-[10px] text-red-600 font-mono mt-0.5" dir="ltr">{error.code}</p>}
+              {error.code && (
+                <p className="text-[10px] text-red-600 font-mono mt-0.5" dir="ltr">
+                  {error.code}
+                </p>
+              )}
               <button
-                onClick={() => draft()}
+                onClick={() => {
+                  setError(null);
+                  // Retry the last user message
+                  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+                  if (lastUser) {
+                    // Re-send by popping it out and calling send with its content
+                    setMessages(messages.slice(0, -1));
+                    send(lastUser.content);
+                  }
+                }}
                 className="text-[11px] font-bold text-red-700 hover:underline mt-2"
               >
                 إعادة المحاولة
@@ -677,32 +789,79 @@ function AIQueryAssistant({ onUseQuery }) {
         </div>
       )}
 
-      {/* Result */}
-      {result && (
+      {/* Refused (safety guardrail) */}
+      {refused && (
+        <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-[12px] animate-fade-in-up">
+          <div className="flex items-start gap-2">
+            <span className="text-red-600 text-sm flex-shrink-0">🚫</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-red-800 mb-1">تم رفض الطلب</p>
+              <p className="text-[11px] text-red-700 leading-relaxed">{refused.reason}</p>
+              <button
+                onClick={reset}
+                className="text-[11px] font-bold text-red-700 hover:underline mt-2"
+              >
+                بدء من جديد
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Final draft */}
+      {draft && (
         <div className="mt-3 space-y-2 animate-fade-in-up">
           {/* The generated query */}
           <div className="p-3 bg-brand-black rounded-[12px]">
             <p className="text-[10px] font-bold text-white/60 mb-1">الاستعلام المقترح</p>
-            <code className="block text-xs font-mono text-white break-all leading-relaxed" dir="ltr">
-              {result.query}
+            <code
+              className="block text-xs font-mono text-white break-all leading-relaxed"
+              dir="ltr"
+            >
+              {draft.query}
             </code>
           </div>
 
-          {/* Explanation */}
-          {result.explanation && (
+          {/* Date range chip (if applicable) */}
+          {(draft.start_time || draft.end_time) && (
             <div className="p-3 bg-surface rounded-[12px] border border-border/50">
-              <p className="text-[10px] font-bold text-text-secondary mb-1">الشرح</p>
-              <p className="text-xs text-text-primary leading-relaxed">{result.explanation}</p>
+              <p className="text-[10px] font-bold text-text-secondary mb-1">النطاق الزمني</p>
+              <p className="text-[11px] text-text-primary font-mono" dir="ltr">
+                {draft.start_time ? new Date(draft.start_time).toISOString().slice(0, 10) : "—"}
+                {"  →  "}
+                {draft.end_time ? new Date(draft.end_time).toISOString().slice(0, 10) : "الآن"}
+              </p>
             </div>
           )}
 
+          {/* Expected cost before execution */}
+          <div className="p-3 bg-gradient-to-br from-emerald-50 to-surface rounded-[12px] border border-emerald-200">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-emerald-800 mb-0.5">التكلفة المتوقعة قبل التنفيذ</p>
+                <p className="text-[11px] text-text-secondary">
+                  {Math.max(1, maxTweets).toLocaleString()} تغريدة × ${costPerTweet}
+                </p>
+              </div>
+              <div className="text-left flex-shrink-0">
+                <p className="font-display text-xl font-black text-emerald-900" dir="ltr">
+                  ${estCost}
+                </p>
+                <p className="text-[9px] text-text-muted">قابل للتعديل من حاسبة التكلفة</p>
+              </div>
+            </div>
+          </div>
+
           {/* Tips */}
-          {result.tips && result.tips.length > 0 && (
+          {draft.tips && draft.tips.length > 0 && (
             <div className="p-3 bg-surface rounded-[12px] border border-border/50">
               <p className="text-[10px] font-bold text-text-secondary mb-2">اقتراحات للتحسين</p>
               <ul className="space-y-1">
-                {result.tips.map((tip, i) => (
-                  <li key={i} className="text-[11px] text-text-secondary flex items-start gap-2">
+                {draft.tips.map((tip, i) => (
+                  <li
+                    key={i}
+                    className="text-[11px] text-text-secondary flex items-start gap-2"
+                  >
                     <span className="text-text-muted flex-shrink-0">•</span>
                     <span>{tip}</span>
                   </li>
@@ -717,16 +876,16 @@ function AIQueryAssistant({ onUseQuery }) {
               استخدم هذا الاستعلام
             </button>
             <button
-              onClick={() => navigator.clipboard?.writeText(result.query)}
+              onClick={() => navigator.clipboard?.writeText(draft.query)}
               className="text-xs text-text-secondary hover:text-text-primary font-bold px-3 py-2"
             >
               نسخ
             </button>
             <button
-              onClick={() => draft()}
+              onClick={reset}
               className="text-xs text-text-secondary hover:text-text-primary font-bold px-3 py-2"
             >
-              صياغة بديلة
+              محادثة جديدة
             </button>
           </div>
         </div>
