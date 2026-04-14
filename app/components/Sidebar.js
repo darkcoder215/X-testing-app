@@ -34,10 +34,7 @@ export default function Sidebar() {
       {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 right-0 left-0 h-14 bg-dark-slate flex items-center justify-between px-4 z-50">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center flex-shrink-0">
-            <span className="text-black font-black text-xs">X</span>
-          </div>
-          <span className="font-display text-sm font-bold text-text-on-dark">محلل التغريدات</span>
+          <img src="/rimthan-logo.jpg" alt="Rimthan" className="h-8 w-auto" />
         </div>
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
@@ -81,15 +78,8 @@ export default function Sidebar() {
       >
         {/* Logo — desktop only */}
         <div className="hidden md:block p-6 border-b border-charcoal">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0">
-              <span className="text-black font-black text-sm">X</span>
-            </div>
-            <div>
-              <h1 className="font-display text-lg font-bold text-text-on-dark">محلل التغريدات</h1>
-              <p className="text-xs text-muted mt-0.5">by Yaman.io</p>
-            </div>
-          </div>
+          <img src="/rimthan-logo.jpg" alt="Rimthan" className="h-12 w-auto mx-auto" />
+          <p className="text-[11px] text-muted mt-3 text-center">محلل التغريدات</p>
         </div>
 
         {/* Navigation */}
@@ -122,7 +112,7 @@ export default function Sidebar() {
         {/* Footer */}
         <div className="p-4 border-t border-charcoal">
           <p className="text-[11px] text-muted text-center">
-            X API v2 — by Yaman.io
+            X API v2 — by Rimthan
           </p>
         </div>
       </aside>

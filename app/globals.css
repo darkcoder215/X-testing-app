@@ -150,9 +150,9 @@
   --color-hot-pink: #FF00B7;
   --color-burgundy: #82003A;
 
-  /* Neutrals */
-  --color-dark-slate: #111421;
-  --color-charcoal: #2B2D3F;
+  /* Neutrals — brand dark matches Rimthan logo background (#181818) */
+  --color-dark-slate: #181818;
+  --color-charcoal: #2B2B2B;
   --color-muted: #494C6B;
   --color-warm-gray: #EFEDE2;
   --color-cream: #F4F2ED;

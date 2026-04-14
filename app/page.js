@@ -19,9 +19,8 @@ export default function LandingPage() {
             mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
           }`}
         >
-          <div className="inline-flex items-center gap-2 bg-surface rounded-full px-4 py-2 shadow-card mb-8 border border-border">
-            <span className="w-2 h-2 rounded-full bg-black animate-pulse-dot" />
-            <span className="text-xs font-bold text-text-secondary">Yaman.io</span>
+          <div className="inline-flex items-center gap-2 bg-dark-slate rounded-full px-4 py-2 shadow-card mb-8">
+            <img src="/rimthan-logo.jpg" alt="Rimthan" className="h-5 w-auto" />
           </div>
         </div>
 
@@ -155,11 +154,9 @@ export default function LandingPage() {
           mounted ? "opacity-100" : "opacity-0"
         }`}
       >
-        <div className="flex items-center justify-center gap-2 text-text-muted">
-          <div className="w-5 h-5 rounded-full bg-black flex items-center justify-center">
-            <span className="text-white text-[10px] font-black">X</span>
-          </div>
-          <span className="text-xs font-bold">by Yaman.io</span>
+        <div className="inline-flex items-center gap-2 bg-dark-slate rounded-full px-4 py-2">
+          <span className="text-[10px] font-bold text-white/60">by</span>
+          <img src="/rimthan-logo.jpg" alt="Rimthan" className="h-4 w-auto" />
         </div>
       </div>
     </div>
