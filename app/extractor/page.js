@@ -314,6 +314,9 @@ export default function ExtractorPage() {
             </div>
           </div>
 
+          {/* AI Query Assistant */}
+          <AIQueryAssistant onUseQuery={setQuery} />
+
           {/* Search Operators Guide */}
           <SearchOperatorsGuide />
 
@@ -515,6 +518,206 @@ function dedupeByKey(arr) {
     seen.add(key);
     return true;
   });
+}
+
+/* ═══════════════ AI Query Assistant ═══════════════ */
+function AIQueryAssistant({ onUseQuery }) {
+  const [intent, setIntent] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+
+  const EXAMPLES = [
+    "تغريدات عربية عن الذكاء الاصطناعي آخر أسبوع بدون ريتويت",
+    "كل تغريدات إيلون ماسك التي تحتوي صورًا",
+    "الردود على تغريدة فيها كلمة اقتصاد",
+  ];
+
+  async function draft(userIntent) {
+    const text = (userIntent ?? intent).trim();
+    if (!text) return;
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const res = await fetch("/api/draft-query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intent: text }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        setError(data);
+      } else {
+        setResult(data);
+      }
+    } catch (err) {
+      setError({ error: err.message || "خطأ في الاتصال.", code: "NETWORK_ERROR" });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function useQuery() {
+    if (result?.query) {
+      onUseQuery(result.query);
+      // Scroll to top so user sees the populated search box
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  return (
+    <div className="bg-gradient-to-br from-surface to-surface-light rounded-[16px] shadow-card p-4 md:p-5 border border-border/50 animate-fade-in-up">
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-7 h-7 rounded-full bg-brand-black flex items-center justify-center flex-shrink-0">
+          <span className="text-white text-[10px] font-black">AI</span>
+        </div>
+        <div>
+          <h3 className="font-bold text-sm text-text-primary">مساعد الاستعلام الذكي</h3>
+          <p className="text-[11px] text-text-muted mt-0.5">صف ما تريده بلغتك وسيصوغ الاستعلام نيابة عنك</p>
+        </div>
+      </div>
+
+      <div className="relative">
+        <textarea
+          value={intent}
+          onChange={(e) => setIntent(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              draft();
+            }
+          }}
+          placeholder="مثال: تغريدات عربية عن كأس العالم من حسابات موثقة بدون ريتويت"
+          rows={2}
+          maxLength={500}
+          className="w-full px-4 py-3 bg-surface border-2 border-border rounded-[12px] text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand-black focus:ring-2 focus:ring-brand-black/10 text-sm resize-none"
+        />
+        <span className="absolute bottom-2 left-3 text-[10px] text-text-muted font-mono">
+          {intent.length}/500
+        </span>
+      </div>
+
+      {/* Quick example chips */}
+      <div className="flex flex-wrap gap-1.5 mt-2">
+        {EXAMPLES.map((ex) => (
+          <button
+            key={ex}
+            onClick={() => {
+              setIntent(ex);
+              draft(ex);
+            }}
+            disabled={loading}
+            className="text-[10px] px-2.5 py-1 rounded-full bg-surface-light text-text-secondary hover:text-text-primary hover:bg-surface transition-all-fast border border-border/50 disabled:opacity-50"
+          >
+            {ex}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2 mt-3">
+        <button
+          onClick={() => draft()}
+          disabled={!intent.trim() || loading}
+          className="btn-primary text-sm py-2 px-5 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+        >
+          {loading ? (
+            <>
+              <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              جارٍ الصياغة...
+            </>
+          ) : (
+            <>
+              <span>✨</span>
+              اصُغ الاستعلام
+            </>
+          )}
+        </button>
+        {intent && !loading && (
+          <button
+            onClick={() => { setIntent(""); setResult(null); setError(null); }}
+            className="text-xs text-text-muted hover:text-text-primary"
+          >
+            مسح
+          </button>
+        )}
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-[12px]">
+          <div className="flex items-start gap-2">
+            <span className="text-red-600 text-sm flex-shrink-0">⚠️</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-red-800">{error.error}</p>
+              {error.code && <p className="text-[10px] text-red-600 font-mono mt-0.5" dir="ltr">{error.code}</p>}
+              <button
+                onClick={() => draft()}
+                className="text-[11px] font-bold text-red-700 hover:underline mt-2"
+              >
+                إعادة المحاولة
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Result */}
+      {result && (
+        <div className="mt-3 space-y-2 animate-fade-in-up">
+          {/* The generated query */}
+          <div className="p-3 bg-brand-black rounded-[12px]">
+            <p className="text-[10px] font-bold text-white/60 mb-1">الاستعلام المقترح</p>
+            <code className="block text-xs font-mono text-white break-all leading-relaxed" dir="ltr">
+              {result.query}
+            </code>
+          </div>
+
+          {/* Explanation */}
+          {result.explanation && (
+            <div className="p-3 bg-surface rounded-[12px] border border-border/50">
+              <p className="text-[10px] font-bold text-text-secondary mb-1">الشرح</p>
+              <p className="text-xs text-text-primary leading-relaxed">{result.explanation}</p>
+            </div>
+          )}
+
+          {/* Tips */}
+          {result.tips && result.tips.length > 0 && (
+            <div className="p-3 bg-surface rounded-[12px] border border-border/50">
+              <p className="text-[10px] font-bold text-text-secondary mb-2">اقتراحات للتحسين</p>
+              <ul className="space-y-1">
+                {result.tips.map((tip, i) => (
+                  <li key={i} className="text-[11px] text-text-secondary flex items-start gap-2">
+                    <span className="text-text-muted flex-shrink-0">•</span>
+                    <span>{tip}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Action buttons */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={useQuery} className="btn-accent text-sm py-2 px-5">
+              استخدم هذا الاستعلام
+            </button>
+            <button
+              onClick={() => navigator.clipboard?.writeText(result.query)}
+              className="text-xs text-text-secondary hover:text-text-primary font-bold px-3 py-2"
+            >
+              نسخ
+            </button>
+            <button
+              onClick={() => draft()}
+              className="text-xs text-text-secondary hover:text-text-primary font-bold px-3 py-2"
+            >
+              صياغة بديلة
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function SearchOperatorsGuide() {
